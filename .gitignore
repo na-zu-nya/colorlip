@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+
+samples/**/*
+plans/**/*
+snapshots/**/*
+
+.playwright-mcp
+.idea
+.claude
