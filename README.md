@@ -1,12 +1,12 @@
 # colorlip
 
-Extract dominant colors from images — platform-agnostic, zero-dependency core.
+Fast, general-purpose dominant color extraction library for Node.js and Browser. Especially strong with illustrations and artwork. Zero-dependency core.
 
 ## Features
 
 - Adaptive color extraction using CIELAB Delta E perceptual distance
 - Rich output: hex, HSL, hue category (`red`, `blue`, `green`, ...) per color
-- Platform-agnostic core (`extractFromPixels`) works anywhere
+- Platform-agnostic core (`colorlip`) works anywhere
 - Built-in adapters for **Node.js (sharp)** and **Browser (Canvas API)**
 - TypeScript-first with full type definitions
 - Zero runtime dependencies in core
@@ -28,9 +28,9 @@ npm install colorlip sharp
 ### Node.js (sharp)
 
 ```ts
-import { extractFromFile } from "colorlip/sharp";
+import { colorlipFromFile } from "colorlip/sharp";
 
-const colors = await extractFromFile("photo.jpg");
+const colors = await colorlipFromFile("photo.jpg");
 
 console.log(colors);
 // [
@@ -43,38 +43,38 @@ console.log(colors);
 ### Browser (Canvas API)
 
 ```ts
-import { extractFromImage } from "colorlip/canvas";
+import { colorlipFromImage } from "colorlip/canvas";
 
-const colors = await extractFromImage(imgElement);
+const colors = await colorlipFromImage(imgElement);
 ```
 
 ### Raw pixels (any environment)
 
 ```ts
-import { extractFromPixels } from "colorlip";
+import { colorlip } from "colorlip";
 
-const colors = extractFromPixels(pixelData, width, height, channels);
+const colors = colorlip(pixelData, width, height, channels);
 ```
 
 ## API
 
-### `extractFromFile(filePath, options?)` — Node.js / sharp
+### `colorlipFromFile(filePath, options?)` — Node.js / sharp
 
 Reads an image file and returns dominant colors.
 
-### `extractFromBuffer(buffer, options?)` — Node.js / sharp
+### `colorlipFromBuffer(buffer, options?)` — Node.js / sharp
 
 Extracts from an in-memory image buffer.
 
-### `extractFromImage(source, options?)` — Browser / Canvas
+### `colorlipFromImage(source, options?)` — Browser / Canvas
 
 Accepts `HTMLImageElement`, `ImageBitmap`, `Blob`, or image URL string.
 
-### `extractFromImageData(imageData, options?)` — Browser / Canvas
+### `colorlipFromImageData(imageData, options?)` — Browser / Canvas
 
 Extracts from a Canvas `ImageData` object directly.
 
-### `extractFromPixels(data, width, height, channels, options?)` — Core
+### `colorlip(data, width, height, channels, options?)` — Core
 
 Low-level function that works with raw pixel data (`Uint8Array` / `Uint8ClampedArray`). Platform-agnostic.
 

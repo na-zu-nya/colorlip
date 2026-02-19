@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   _internals,
   aggregateColors,
+  colorlip,
   createDominantColor,
   extractFallbackPalette,
-  extractFromPixels,
   getHueCategory,
   rgbToHex,
   rgbToHsl,
@@ -269,32 +269,32 @@ describe("analyzeImageStats", () => {
 });
 
 // ---------------------------------------------------------------------------
-// extractFromPixels
+// colorlip
 // ---------------------------------------------------------------------------
-describe("extractFromPixels", () => {
+describe("colorlip", () => {
   it("彩度のある単色画像から 1色を返す", () => {
     // 鮮やかな赤
     const data = makeSolidPixels(200, 50, 50, 10, 10);
-    const result = extractFromPixels(data, 10, 10, 3);
+    const result = colorlip(data, 10, 10, 3);
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]?.hueCategory).toBe("red");
   });
 
   it("グレー画像ではフォールバックする", () => {
     const data = makeSolidPixels(128, 128, 128, 10, 10);
-    const result = extractFromPixels(data, 10, 10, 3);
+    const result = colorlip(data, 10, 10, 3);
     // フォールバックにより最低 1色は返る
     expect(result.length).toBeGreaterThanOrEqual(1);
   });
 
   it("空のピクセルデータでは空配列を返す", () => {
-    const result = extractFromPixels(new Uint8Array(0), 0, 0, 3);
+    const result = colorlip(new Uint8Array(0), 0, 0, 3);
     expect(result).toEqual([]);
   });
 
   it("2色のストライプから 2色を検出する", () => {
     const data = makeStripedPixels([200, 50, 50], [50, 50, 200], 20, 20);
-    const result = extractFromPixels(data, 20, 20, 3, { numColors: 2 });
+    const result = colorlip(data, 20, 20, 3, { numColors: 2 });
     expect(result.length).toBe(2);
     // 赤系と青系が含まれるはず
     const categories = result.map((c) => c.hueCategory);
@@ -305,20 +305,20 @@ describe("extractFromPixels", () => {
   it("パステル色（低彩度）でも色を拾える", () => {
     // 薄いピンク (彩度が低い)
     const data = makeSolidPixels(220, 190, 200, 20, 20);
-    const result = extractFromPixels(data, 20, 20, 3);
+    const result = colorlip(data, 20, 20, 3);
     // 適応的閾値により低彩度画像でも拾えるはず
     expect(result.length).toBeGreaterThanOrEqual(1);
   });
 
   it("RGBA データ (4 channels) でも動作する", () => {
     const data = makeSolidPixels(200, 50, 50, 10, 10, 4);
-    const result = extractFromPixels(data, 10, 10, 4);
+    const result = colorlip(data, 10, 10, 4);
     expect(result.length).toBeGreaterThanOrEqual(1);
   });
 
   it("numColors オプションで抽出数を制御できる", () => {
     const data = makeStripedPixels([200, 50, 50], [50, 200, 50], 20, 20);
-    const result = extractFromPixels(data, 20, 20, 3, { numColors: 1 });
+    const result = colorlip(data, 20, 20, 3, { numColors: 1 });
     expect(result.length).toBe(1);
   });
 });

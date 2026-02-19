@@ -1,4 +1,4 @@
-import { extractFromPixels } from "../core";
+import { colorlip } from "../core";
 import type { DominantColor, ExtractOptions } from "../types";
 
 /** Canvas API 経由で受け付ける画像ソース */
@@ -11,7 +11,9 @@ const MAX_CANVAS_SIZE = 150;
  *
  * @param source HTMLImageElement, ImageBitmap, Blob, または画像 URL
  */
-export async function extractFromImage(
+export { colorlip } from "../core";
+
+export async function colorlipFromImage(
   source: ImageSource,
   options?: ExtractOptions,
 ): Promise<DominantColor[]> {
@@ -28,7 +30,7 @@ export async function extractFromImage(
     ctx.drawImage(bitmap, 0, 0, w, h);
     const imageData = ctx.getImageData(0, 0, w, h);
 
-    return extractFromImageData(imageData, options);
+    return colorlipFromImageData(imageData, options);
   } finally {
     if ("close" in bitmap && typeof bitmap.close === "function") {
       bitmap.close();
@@ -39,11 +41,11 @@ export async function extractFromImage(
 /**
  * ImageData から代表色を抽出する（Canvas API 使用）。
  */
-export function extractFromImageData(
+export function colorlipFromImageData(
   imageData: ImageData,
   options?: ExtractOptions,
 ): DominantColor[] {
-  return extractFromPixels(imageData.data, imageData.width, imageData.height, 4, options);
+  return colorlip(imageData.data, imageData.width, imageData.height, 4, options);
 }
 
 async function toBitmap(source: ImageSource): Promise<ImageBitmap> {

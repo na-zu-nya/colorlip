@@ -1,12 +1,14 @@
 import sharp from "sharp";
 import { MAX_RESIZE } from "../constants";
-import { extractFromPixels } from "../core";
+import { colorlip } from "../core";
 import type { DominantColor, ExtractOptions } from "../types";
 
 /**
  * 画像ファイルから代表色を抽出する（Node.js / sharp 使用）。
  */
-export async function extractFromFile(
+export { colorlip } from "../core";
+
+export async function colorlipFromFile(
   filePath: string,
   options?: ExtractOptions,
 ): Promise<DominantColor[]> {
@@ -17,7 +19,7 @@ export async function extractFromFile(
 /**
  * 画像バッファから代表色を抽出する（Node.js / sharp 使用）。
  */
-export async function extractFromBuffer(
+export async function colorlipFromBuffer(
   buffer: Buffer | Uint8Array,
   options?: ExtractOptions,
 ): Promise<DominantColor[]> {
@@ -41,7 +43,7 @@ async function extractFromSharpInstance(
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  return extractFromPixels(
+  return colorlip(
     new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
     info.width,
     info.height,

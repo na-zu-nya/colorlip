@@ -144,7 +144,7 @@ function analyzeImageStats(
  *
  * 内部で高度なアルゴリズム → フォールバック → 平均色 の順にフォールバックする。
  */
-export function extractFromPixels(
+export function colorlip(
   data: PixelData,
   width: number,
   height: number,

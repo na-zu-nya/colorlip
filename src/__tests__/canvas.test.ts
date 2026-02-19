@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { extractFromImageData } from "../adapters/canvas";
+import { colorlipFromImageData } from "../adapters/canvas";
 
 /**
  * Canvas アダプターのテスト。
  *
  * extractFromImage は OffscreenCanvas / createImageBitmap に依存するため
- * Node.js 環境では完全なテストが難しい。ここでは extractFromImageData のみテスト。
+ * Node.js 環境では完全なテストが難しい。ここでは colorlipFromImageData のみテスト。
  */
-describe("extractFromImageData", () => {
+describe("colorlipFromImageData", () => {
   function makeImageData(
     r: number,
     g: number,
@@ -28,14 +28,14 @@ describe("extractFromImageData", () => {
 
   it("彩度のある単色 ImageData から色を抽出できる", () => {
     const imageData = makeImageData(200, 50, 50, 255, 10, 10);
-    const result = extractFromImageData(imageData);
+    const result = colorlipFromImageData(imageData);
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]?.hueCategory).toBe("red");
   });
 
   it("透明画像では空配列を返す", () => {
     const imageData = makeImageData(0, 0, 0, 0, 10, 10);
-    const result = extractFromImageData(imageData);
+    const result = colorlipFromImageData(imageData);
     expect(result).toEqual([]);
   });
 
@@ -60,7 +60,7 @@ describe("extractFromImageData", () => {
       }
     }
     const imageData = { data, width: w, height: h, colorSpace: "srgb" } as ImageData;
-    const result = extractFromImageData(imageData, { numColors: 1 });
+    const result = colorlipFromImageData(imageData, { numColors: 1 });
     expect(result.length).toBe(1);
   });
 });

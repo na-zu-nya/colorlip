@@ -16,7 +16,7 @@ export {
   aggregateColors,
   createDominantColor,
   extractFallbackPalette,
-  extractFromPixels,
+  colorlip,
   getHueCategory,
   rgbToHex,
   rgbToHsl,
