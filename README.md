@@ -1,0 +1,129 @@
+# colorlip
+
+Extract dominant colors from images — platform-agnostic, zero-dependency core.
+
+## Features
+
+- Adaptive color extraction using CIELAB Delta E perceptual distance
+- Rich output: hex, HSL, hue category (`red`, `blue`, `green`, ...) per color
+- Platform-agnostic core (`extractFromPixels`) works anywhere
+- Built-in adapters for **Node.js (sharp)** and **Browser (Canvas API)**
+- TypeScript-first with full type definitions
+- Zero runtime dependencies in core
+
+## Install
+
+```bash
+npm install colorlip
+```
+
+For Node.js usage with sharp adapter:
+
+```bash
+npm install colorlip sharp
+```
+
+## Quick Start
+
+### Node.js (sharp)
+
+```ts
+import { extractFromFile } from "colorlip/sharp";
+
+const colors = await extractFromFile("photo.jpg");
+
+console.log(colors);
+// [
+//   { r: 42, g: 98, b: 168, hex: '#2A62A8', percentage: 0.34,
+//     hue: 213, saturation: 75, lightness: 41, hueCategory: 'blue' },
+//   ...
+// ]
+```
+
+### Browser (Canvas API)
+
+```ts
+import { extractFromImage } from "colorlip/canvas";
+
+const colors = await extractFromImage(imgElement);
+```
+
+### Raw pixels (any environment)
+
+```ts
+import { extractFromPixels } from "colorlip";
+
+const colors = extractFromPixels(pixelData, width, height, channels);
+```
+
+## API
+
+### `extractFromFile(filePath, options?)` — Node.js / sharp
+
+Reads an image file and returns dominant colors.
+
+### `extractFromBuffer(buffer, options?)` — Node.js / sharp
+
+Extracts from an in-memory image buffer.
+
+### `extractFromImage(source, options?)` — Browser / Canvas
+
+Accepts `HTMLImageElement`, `ImageBitmap`, `Blob`, or image URL string.
+
+### `extractFromImageData(imageData, options?)` — Browser / Canvas
+
+Extracts from a Canvas `ImageData` object directly.
+
+### `extractFromPixels(data, width, height, channels, options?)` — Core
+
+Low-level function that works with raw pixel data (`Uint8Array` / `Uint8ClampedArray`). Platform-agnostic.
+
+### Options
+
+```ts
+interface ExtractOptions {
+  numColors?: number;            // Number of colors to extract (default: 3)
+  saturationThreshold?: number;  // Saturation filter threshold (default: 0.15)
+  brightnessMin?: number;        // Min brightness filter (default: 20)
+  brightnessMax?: number;        // Max brightness filter (default: 235)
+  quantizationStep?: number;     // Quantization step size (default: 12)
+}
+```
+
+### Output
+
+Each color in the result array is a `DominantColor`:
+
+```ts
+interface DominantColor {
+  r: number;           // 0-255
+  g: number;           // 0-255
+  b: number;           // 0-255
+  hex: string;         // e.g. "#2A62A8"
+  percentage: number;  // Relative weight (0-1)
+  hue: number;         // 0-360
+  saturation: number;  // 0-100
+  lightness: number;   // 0-100
+  hueCategory: HueCategory; // "red" | "orange" | "yellow" | "green" | "cyan" | "blue" | "violet" | "gray"
+}
+```
+
+### Utility functions
+
+```ts
+import { rgbToHex, rgbToHsl, getHueCategory, createDominantColor, aggregateColors } from "colorlip";
+```
+
+## How It Works
+
+1. **Resize** — Image is downscaled to 150x150 max via adapter (sharp / canvas)
+2. **Analyze** — Sampling pass estimates image characteristics (median saturation, edge centrality)
+3. **Extract** — Single-pass pixel scan with adaptive saturation threshold, center weighting, and edge weighting
+4. **Quantize** — Colors are bucketed by quantization step into a Map
+5. **Score** — Each color bucket is scored by weight, saturation, and spatial variance
+6. **Merge** — Similar colors are merged using CIE76 Delta E (threshold: 15)
+7. **Fallback** — If no colors pass the filter, a simpler histogram-based extraction is used
+
+## License
+
+[MIT](./LICENSE)
