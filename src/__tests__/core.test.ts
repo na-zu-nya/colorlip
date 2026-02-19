@@ -10,7 +10,7 @@ import {
   rgbToHsl,
 } from "../core";
 
-const { rgbToLab, deltaE76, analyzeImageStats } = _internals;
+const { rgbToLab, deltaE76, analyzeImageStats, labToLch, rgbToOklab, oklabToOklch } = _internals;
 
 // ---------------------------------------------------------------------------
 // ヘルパー: 単色の画像ピクセルデータを生成
@@ -170,6 +170,48 @@ describe("createDominantColor", () => {
   it("グレーは hueCategory が gray になる", () => {
     const c = createDominantColor(128, 128, 128, 1);
     expect(c.hueCategory).toBe("gray");
+  });
+
+  it("lab フィールドが含まれる", () => {
+    const c = createDominantColor(255, 0, 0, 1);
+    expect(c.lab).toBeDefined();
+    expect(c.lab.L).toBeCloseTo(53.2, 0);
+    expect(c.lab.a).toBeCloseTo(80.1, 0);
+    expect(c.lab.b).toBeCloseTo(67.2, 0);
+  });
+
+  it("lch フィールドが含まれる", () => {
+    const c = createDominantColor(255, 0, 0, 1);
+    expect(c.lch).toBeDefined();
+    expect(c.lch.L).toBeCloseTo(53.2, 0);
+    expect(c.lch.C).toBeGreaterThan(0);
+    expect(c.lch.H).toBeGreaterThanOrEqual(0);
+    expect(c.lch.H).toBeLessThan(360);
+  });
+
+  it("oklab フィールドが含まれる", () => {
+    const c = createDominantColor(255, 0, 0, 1);
+    expect(c.oklab).toBeDefined();
+    expect(c.oklab.L).toBeGreaterThan(0);
+    expect(c.oklab.L).toBeLessThan(1);
+  });
+
+  it("oklch フィールドが含まれる", () => {
+    const c = createDominantColor(255, 0, 0, 1);
+    expect(c.oklch).toBeDefined();
+    expect(c.oklch.L).toBeGreaterThan(0);
+    expect(c.oklch.C).toBeGreaterThan(0);
+    expect(c.oklch.H).toBeGreaterThanOrEqual(0);
+  });
+
+  it("css フィールドが全色空間の文字列を含む", () => {
+    const c = createDominantColor(255, 0, 0, 1);
+    expect(c.css.rgb).toBe("rgb(255 0 0)");
+    expect(c.css.hsl).toBe("hsl(0 100% 50%)");
+    expect(c.css.lab).toMatch(/^lab\(.+\)$/);
+    expect(c.css.lch).toMatch(/^lch\(.+\)$/);
+    expect(c.css.oklab).toMatch(/^oklab\(.+\)$/);
+    expect(c.css.oklch).toMatch(/^oklch\(.+\)$/);
   });
 });
 
@@ -356,5 +398,159 @@ describe("aggregateColors", () => {
 
   it("空の入力では空配列を返す", () => {
     expect(aggregateColors([])).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// labToLch
+// ---------------------------------------------------------------------------
+describe("labToLch", () => {
+  it("無彩色は C≈0", () => {
+    const lab = rgbToLab(128, 128, 128);
+    const lch = labToLch(lab);
+    expect(lch.L).toBeCloseTo(lab.L, 1);
+    expect(lch.C).toBeCloseTo(0, 0);
+  });
+
+  it("純赤の LCH が既知の範囲内", () => {
+    const lab = rgbToLab(255, 0, 0);
+    const lch = labToLch(lab);
+    expect(lch.L).toBeCloseTo(53.2, 0);
+    // C = sqrt(80.1^2 + 67.2^2) ≈ 104.6
+    expect(lch.C).toBeCloseTo(104.6, 0);
+    // H = atan2(67.2, 80.1) ≈ 40°
+    expect(lch.H).toBeCloseTo(40, 0);
+  });
+
+  it("H は 0–360 の範囲", () => {
+    const lab = rgbToLab(0, 0, 255);
+    const lch = labToLch(lab);
+    expect(lch.H).toBeGreaterThanOrEqual(0);
+    expect(lch.H).toBeLessThan(360);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// rgbToOklab
+// ---------------------------------------------------------------------------
+describe("rgbToOklab", () => {
+  it("黒は L≈0", () => {
+    const oklab = rgbToOklab(0, 0, 0);
+    expect(oklab.L).toBeCloseTo(0, 2);
+    expect(oklab.a).toBeCloseTo(0, 2);
+    expect(oklab.b).toBeCloseTo(0, 2);
+  });
+
+  it("白は L≈1", () => {
+    const oklab = rgbToOklab(255, 255, 255);
+    expect(oklab.L).toBeCloseTo(1, 1);
+    expect(oklab.a).toBeCloseTo(0, 1);
+    expect(oklab.b).toBeCloseTo(0, 1);
+  });
+
+  it("純赤の OKLab が既知の範囲内", () => {
+    const oklab = rgbToOklab(255, 0, 0);
+    // 既知: L≈0.6279, a≈0.2249, b≈0.1264
+    expect(oklab.L).toBeCloseTo(0.6279, 2);
+    expect(oklab.a).toBeCloseTo(0.2249, 2);
+    expect(oklab.b).toBeCloseTo(0.1264, 2);
+  });
+
+  it("純緑の OKLab", () => {
+    const oklab = rgbToOklab(0, 255, 0);
+    // 既知: L≈0.8664, a≈-0.2339, b≈0.1795
+    expect(oklab.L).toBeCloseTo(0.8664, 2);
+    expect(oklab.a).toBeCloseTo(-0.2339, 2);
+    expect(oklab.b).toBeCloseTo(0.1795, 2);
+  });
+
+  it("純青の OKLab", () => {
+    const oklab = rgbToOklab(0, 0, 255);
+    // 既知: L≈0.4520, a≈-0.0324, b≈-0.3116
+    expect(oklab.L).toBeCloseTo(0.452, 2);
+    expect(oklab.a).toBeCloseTo(-0.0324, 2);
+    expect(oklab.b).toBeCloseTo(-0.3116, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// oklabToOklch
+// ---------------------------------------------------------------------------
+describe("oklabToOklch", () => {
+  it("無彩色は C≈0", () => {
+    const oklab = rgbToOklab(128, 128, 128);
+    const oklch = oklabToOklch(oklab);
+    expect(oklch.C).toBeCloseTo(0, 2);
+  });
+
+  it("純赤の OKLCH", () => {
+    const oklab = rgbToOklab(255, 0, 0);
+    const oklch = oklabToOklch(oklab);
+    expect(oklch.L).toBeCloseTo(oklab.L, 4);
+    // C = sqrt(0.2249^2 + 0.1264^2) ≈ 0.2580
+    expect(oklch.C).toBeCloseTo(0.258, 2);
+    // H = atan2(0.1264, 0.2249) ≈ 29.2°
+    expect(oklch.H).toBeCloseTo(29.2, 0);
+  });
+
+  it("H は 0–360 の範囲", () => {
+    const oklab = rgbToOklab(0, 0, 255);
+    const oklch = oklabToOklch(oklab);
+    expect(oklch.H).toBeGreaterThanOrEqual(0);
+    expect(oklch.H).toBeLessThan(360);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CSS 文字列フォーマット
+// ---------------------------------------------------------------------------
+describe("CSS 文字列", () => {
+  it("rgb フォーマット", () => {
+    const c = createDominantColor(42, 98, 168, 1);
+    expect(c.css.rgb).toBe("rgb(42 98 168)");
+  });
+
+  it("hsl フォーマット", () => {
+    const c = createDominantColor(255, 0, 0, 1);
+    expect(c.css.hsl).toBe("hsl(0 100% 50%)");
+  });
+
+  it("lab フォーマットは小数点1桁", () => {
+    const c = createDominantColor(42, 98, 168, 1);
+    // lab(L a b) の各値が小数点1桁
+    const match = c.css.lab.match(/^lab\((-?\d+\.?\d?) (-?\d+\.?\d?) (-?\d+\.?\d?)\)$/);
+    expect(match).not.toBeNull();
+  });
+
+  it("lch フォーマットは小数点1桁", () => {
+    const c = createDominantColor(42, 98, 168, 1);
+    const match = c.css.lch.match(/^lch\((-?\d+\.?\d?) (-?\d+\.?\d?) (-?\d+\.?\d?)\)$/);
+    expect(match).not.toBeNull();
+  });
+
+  it("oklab フォーマットは小数点2桁", () => {
+    const c = createDominantColor(42, 98, 168, 1);
+    const match = c.css.oklab.match(
+      /^oklab\((-?\d+\.?\d{0,2}) (-?\d+\.?\d{0,2}) (-?\d+\.?\d{0,2})\)$/,
+    );
+    expect(match).not.toBeNull();
+  });
+
+  it("oklch フォーマット（L,C は小数点2桁、H は小数点1桁）", () => {
+    const c = createDominantColor(42, 98, 168, 1);
+    expect(c.css.oklch).toMatch(/^oklch\(/);
+    expect(c.css.oklch).toMatch(/\)$/);
+  });
+
+  it("黒の CSS 文字列", () => {
+    const c = createDominantColor(0, 0, 0, 1);
+    expect(c.css.rgb).toBe("rgb(0 0 0)");
+    expect(c.css.hsl).toBe("hsl(0 0% 0%)");
+  });
+
+  it("白の CSS 文字列", () => {
+    const c = createDominantColor(255, 255, 255, 1);
+    expect(c.css.rgb).toBe("rgb(255 255 255)");
+    expect(c.css.hsl).toBe("hsl(0 0% 100%)");
   });
 });

@@ -1,10 +1,15 @@
 // Types
 export type {
+  CSSColors,
   DominantColor,
   ExtractOptions,
   HSL,
   HueCategory,
   ImageInfo,
+  Lab,
+  LCH,
+  OKLab,
+  OKLCH,
   PixelData,
 } from "./types";
 

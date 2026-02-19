@@ -5,17 +5,22 @@ import {
   EDGE_STRENGTH_DIVISOR,
   FALLBACK_QUANTIZATION_STEP,
 } from "./constants";
-import type { DominantColor, ExtractOptions, HSL, HueCategory, PixelData } from "./types";
+import type {
+  CSSColors,
+  DominantColor,
+  ExtractOptions,
+  HSL,
+  HueCategory,
+  LCH,
+  Lab,
+  OKLCH,
+  OKLab,
+  PixelData,
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // CIELAB color space
 // ---------------------------------------------------------------------------
-
-interface Lab {
-  L: number;
-  a: number;
-  b: number;
-}
 
 /** RGB (0-255) → CIELAB。D65 白色点使用。 */
 function rgbToLab(r: number, g: number, b: number): Lab {
@@ -51,6 +56,94 @@ function rgbToLab(r: number, g: number, b: number): Lab {
 /** CIE76 Delta E（Lab 空間でのユークリッド距離） */
 function deltaE76(lab1: Lab, lab2: Lab): number {
   return Math.sqrt((lab1.L - lab2.L) ** 2 + (lab1.a - lab2.a) ** 2 + (lab1.b - lab2.b) ** 2);
+}
+
+// ---------------------------------------------------------------------------
+// LCH color space (polar Lab)
+// ---------------------------------------------------------------------------
+
+/** Lab → LCH（Lab の極座標変換） */
+function labToLch(lab: Lab): LCH {
+  const C = Math.sqrt(lab.a ** 2 + lab.b ** 2);
+  let H = (Math.atan2(lab.b, lab.a) * 180) / Math.PI;
+  if (H < 0) H += 360;
+  return { L: lab.L, C, H };
+}
+
+// ---------------------------------------------------------------------------
+// OKLab color space
+// ---------------------------------------------------------------------------
+
+/** RGB (0-255) → OKLab */
+function rgbToOklab(r: number, g: number, b: number): OKLab {
+  // sRGB → linear RGB
+  let rl = r / 255;
+  let gl = g / 255;
+  let bl = b / 255;
+
+  rl = rl > 0.04045 ? ((rl + 0.055) / 1.055) ** 2.4 : rl / 12.92;
+  gl = gl > 0.04045 ? ((gl + 0.055) / 1.055) ** 2.4 : gl / 12.92;
+  bl = bl > 0.04045 ? ((bl + 0.055) / 1.055) ** 2.4 : bl / 12.92;
+
+  // linear RGB → LMS (using M1 matrix)
+  const l = 0.4122214708 * rl + 0.5363325363 * gl + 0.0514459929 * bl;
+  const m = 0.2119034982 * rl + 0.6806995451 * gl + 0.1073969566 * bl;
+  const s = 0.0883024619 * rl + 0.2817188376 * gl + 0.6299787005 * bl;
+
+  // LMS → LMS' (cube root)
+  const l_ = Math.cbrt(l);
+  const m_ = Math.cbrt(m);
+  const s_ = Math.cbrt(s);
+
+  // LMS' → OKLab (using M2 matrix)
+  return {
+    L: 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_,
+    a: 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_,
+    b: 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// OKLCH color space (polar OKLab)
+// ---------------------------------------------------------------------------
+
+/** OKLab → OKLCH（OKLab の極座標変換） */
+function oklabToOklch(oklab: OKLab): OKLCH {
+  const C = Math.sqrt(oklab.a ** 2 + oklab.b ** 2);
+  let H = (Math.atan2(oklab.b, oklab.a) * 180) / Math.PI;
+  if (H < 0) H += 360;
+  return { L: oklab.L, C, H };
+}
+
+// ---------------------------------------------------------------------------
+// CSS color string helpers
+// ---------------------------------------------------------------------------
+
+/** 小数点以下を指定桁数に丸める */
+function round(value: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
+/** 全色空間から CSS 文字列を生成 */
+function createCSSColors(
+  r: number,
+  g: number,
+  b: number,
+  hsl: HSL,
+  lab: Lab,
+  lch: LCH,
+  oklab: OKLab,
+  oklch: OKLCH,
+): CSSColors {
+  return {
+    rgb: `rgb(${r} ${g} ${b})`,
+    hsl: `hsl(${hsl.h} ${hsl.s}% ${hsl.l}%)`,
+    lab: `lab(${round(lab.L, 1)} ${round(lab.a, 1)} ${round(lab.b, 1)})`,
+    lch: `lch(${round(lch.L, 1)} ${round(lch.C, 1)} ${round(lch.H, 1)})`,
+    oklab: `oklab(${round(oklab.L, 2)} ${round(oklab.a, 2)} ${round(oklab.b, 2)})`,
+    oklch: `oklch(${round(oklch.L, 2)} ${round(oklch.C, 2)} ${round(oklch.H, 1)})`,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +387,11 @@ export function createDominantColor(
 ): DominantColor {
   const hsl = rgbToHsl(r, g, b);
   const hueCategory: HueCategory = hsl.s <= 5 ? "gray" : getHueCategory(hsl.h);
+  const lab = rgbToLab(r, g, b);
+  const lch = labToLch(lab);
+  const oklab = rgbToOklab(r, g, b);
+  const oklch = oklabToOklch(oklab);
+  const css = createCSSColors(r, g, b, hsl, lab, lch, oklab, oklch);
   return {
     r,
     g,
@@ -304,6 +402,11 @@ export function createDominantColor(
     saturation: hsl.s,
     lightness: hsl.l,
     hueCategory,
+    lab,
+    lch,
+    oklab,
+    oklch,
+    css,
   };
 }
 
@@ -572,4 +675,7 @@ export const _internals = {
   rgbToLab,
   deltaE76,
   analyzeImageStats,
+  labToLch,
+  rgbToOklab,
+  oklabToOklch,
 };

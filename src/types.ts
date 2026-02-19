@@ -19,6 +19,56 @@ export interface HSL {
   l: number;
 }
 
+/** CIE L*a*b* 色空間 */
+export interface Lab {
+  /** 明度 (0–100) */
+  L: number;
+  /** 緑–赤軸 */
+  a: number;
+  /** 青–黄軸 */
+  b: number;
+}
+
+/** CIE LCH 色空間（Lab の極座標表現） */
+export interface LCH {
+  /** 明度 (0–100) */
+  L: number;
+  /** 彩度 */
+  C: number;
+  /** 色相 (0–360) */
+  H: number;
+}
+
+/** OKLab 色空間 */
+export interface OKLab {
+  /** 明度 (0–1) */
+  L: number;
+  /** 緑–赤軸 */
+  a: number;
+  /** 青–黄軸 */
+  b: number;
+}
+
+/** OKLCH 色空間（OKLab の極座標表現） */
+export interface OKLCH {
+  /** 明度 (0–1) */
+  L: number;
+  /** 彩度 */
+  C: number;
+  /** 色相 (0–360) */
+  H: number;
+}
+
+/** CSS カラー文字列 */
+export interface CSSColors {
+  rgb: string;
+  hsl: string;
+  lab: string;
+  lch: string;
+  oklab: string;
+  oklch: string;
+}
+
 /** 画像のピクセルバッファ情報 */
 export interface ImageInfo {
   width: number;
@@ -41,6 +91,16 @@ export interface DominantColor {
   lightness: number;
   /** 色相カテゴリ */
   hueCategory: HueCategory;
+  /** CIE L*a*b* */
+  lab: Lab;
+  /** CIE LCH */
+  lch: LCH;
+  /** OKLab */
+  oklab: OKLab;
+  /** OKLCH */
+  oklch: OKLCH;
+  /** CSS カラー文字列 */
+  css: CSSColors;
 }
 
 /** 抽出オプション */
