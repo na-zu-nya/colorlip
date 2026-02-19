@@ -1,6 +1,6 @@
 {
   "name": "colorlip",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Extract dominant colors from images — platform-agnostic, zero-dependency core",
   "type": "module",
   "main": "./dist/index.cjs",

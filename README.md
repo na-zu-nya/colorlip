@@ -132,6 +132,14 @@ interface DominantColor {
 import { rgbToHex, rgbToHsl, getHueCategory, createDominantColor, aggregateColors } from "colorlip";
 ```
 
+| Function | Description |
+|----------|-------------|
+| `rgbToHex(r, g, b)` | RGB → hex string (e.g. `"#FF00AA"`) |
+| `rgbToHsl(r, g, b)` | RGB → `{ h, s, l }` |
+| `getHueCategory(hue)` | Hue (0–360) → `"red"` \| `"orange"` \| … \| `"gray"` |
+| `createDominantColor(r, g, b, percentage)` | Build a full `DominantColor` object from RGB + weight |
+| `aggregateColors(colorSets, numColors?)` | Merge multiple extraction results into top-N colors |
+
 ## How It Works
 
 1. **Resize** — Image is downscaled to 150x150 max via adapter (sharp / canvas)
