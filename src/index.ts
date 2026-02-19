@@ -14,8 +14,6 @@ export { DEFAULT_OPTIONS } from "./constants";
 // Core functions
 export {
   aggregateColors,
-  calculateColorDistance,
-  calculateColorSimilarity,
   createDominantColor,
   extractFallbackPalette,
   extractFromPixels,
@@ -23,6 +21,3 @@ export {
   rgbToHex,
   rgbToHsl,
 } from "./core";
-
-// Core V2 (perceptual improvements)
-export { extractFromPixelsV2 } from "./core-v2";

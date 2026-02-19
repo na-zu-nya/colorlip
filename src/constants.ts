@@ -6,7 +6,6 @@ export const DEFAULT_OPTIONS: Required<ExtractOptions> = {
   brightnessMin: 20,
   brightnessMax: 235,
   quantizationStep: 12,
-  mergeDistance: 35,
 } as const;
 
 /** フォールバック時の量子化ステップ */

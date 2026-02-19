@@ -55,8 +55,6 @@ export interface ExtractOptions {
   brightnessMax?: number;
   /** 量子化ステップ（デフォルト: 12） */
   quantizationStep?: number;
-  /** 類似色マージの距離閾値（デフォルト: 35） */
-  mergeDistance?: number;
 }
 
 /** ピクセルデータの型（Node.js Buffer / ブラウザ Uint8ClampedArray 双方対応） */

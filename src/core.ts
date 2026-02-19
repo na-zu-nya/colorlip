@@ -8,6 +8,134 @@ import {
 import type { DominantColor, ExtractOptions, HSL, HueCategory, PixelData } from "./types";
 
 // ---------------------------------------------------------------------------
+// CIELAB color space
+// ---------------------------------------------------------------------------
+
+interface Lab {
+  L: number;
+  a: number;
+  b: number;
+}
+
+/** RGB (0-255) → CIELAB。D65 白色点使用。 */
+function rgbToLab(r: number, g: number, b: number): Lab {
+  // sRGB → linear RGB
+  let rl = r / 255;
+  let gl = g / 255;
+  let bl = b / 255;
+
+  rl = rl > 0.04045 ? ((rl + 0.055) / 1.055) ** 2.4 : rl / 12.92;
+  gl = gl > 0.04045 ? ((gl + 0.055) / 1.055) ** 2.4 : gl / 12.92;
+  bl = bl > 0.04045 ? ((bl + 0.055) / 1.055) ** 2.4 : bl / 12.92;
+
+  // linear RGB → XYZ (D65)
+  let x = (rl * 0.4124564 + gl * 0.3575761 + bl * 0.1804375) / 0.95047;
+  let y = rl * 0.2126729 + gl * 0.7151522 + bl * 0.072175;
+  let z = (rl * 0.0193339 + gl * 0.119192 + bl * 0.9503041) / 1.08883;
+
+  // XYZ → Lab
+  const epsilon = 0.008856;
+  const kappa = 903.3;
+
+  x = x > epsilon ? Math.cbrt(x) : (kappa * x + 16) / 116;
+  y = y > epsilon ? Math.cbrt(y) : (kappa * y + 16) / 116;
+  z = z > epsilon ? Math.cbrt(z) : (kappa * z + 16) / 116;
+
+  return {
+    L: 116 * y - 16,
+    a: 500 * (x - y),
+    b: 200 * (y - z),
+  };
+}
+
+/** CIE76 Delta E（Lab 空間でのユークリッド距離） */
+function deltaE76(lab1: Lab, lab2: Lab): number {
+  return Math.sqrt((lab1.L - lab2.L) ** 2 + (lab1.a - lab2.a) ** 2 + (lab1.b - lab2.b) ** 2);
+}
+
+// ---------------------------------------------------------------------------
+// Image analysis (sampling pass)
+// ---------------------------------------------------------------------------
+
+interface ImageStats {
+  /** 彩度の中央値 (0-1) */
+  medianSaturation: number;
+  /** エッジの中央集中度 (0-1, 1=完全に中央集中) */
+  edgeCentrality: number;
+}
+
+/** ストライドサンプリングで画像統計を計算 */
+function analyzeImageStats(
+  data: PixelData,
+  width: number,
+  height: number,
+  channels: number,
+): ImageStats {
+  const pixelCount = width * height;
+  if (pixelCount === 0) return { medianSaturation: 0, edgeCentrality: 0.5 };
+
+  // ~10% サンプリング（最低100、最大2000ピクセル）
+  const sampleCount = Math.min(Math.max(Math.floor(pixelCount * 0.1), 100), 2000);
+  const stride = Math.max(1, Math.floor(pixelCount / sampleCount));
+
+  const saturations: number[] = [];
+
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const maxDist = Math.sqrt(centerX ** 2 + centerY ** 2);
+
+  let edgeWeightedCenterDist = 0;
+  let totalEdgeStrength = 0;
+
+  for (let idx = 0; idx < pixelCount; idx += stride) {
+    const x = idx % width;
+    const y = Math.floor(idx / width);
+    const i = idx * channels;
+
+    const r = data[i] ?? 0;
+    const g = data[i + 1] ?? 0;
+    const b = data[i + 2] ?? 0;
+
+    // 彩度を収集
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    saturations.push(max === 0 ? 0 : (max - min) / max);
+
+    // エッジ強度を計算（境界でなければ）
+    if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
+      const getGray = (px: number, py: number): number => {
+        const j = (py * width + px) * channels;
+        return ((data[j] ?? 0) + (data[j + 1] ?? 0) + (data[j + 2] ?? 0)) / 3;
+      };
+      const center = getGray(x, y);
+      const strength =
+        Math.abs(center - getGray(x - 1, y)) +
+        Math.abs(center - getGray(x + 1, y)) +
+        Math.abs(center - getGray(x, y - 1)) +
+        Math.abs(center - getGray(x, y + 1));
+
+      if (strength > 10) {
+        const distFromCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+        const normalizedDist = maxDist > 0 ? distFromCenter / maxDist : 0;
+        edgeWeightedCenterDist += normalizedDist * strength;
+        totalEdgeStrength += strength;
+      }
+    }
+  }
+
+  // 彩度の中央値
+  saturations.sort((a, b) => a - b);
+  const medianSaturation = saturations[Math.floor(saturations.length / 2)] ?? 0;
+
+  // エッジ集中度: 平均重み付き距離が小さいほど中央集中
+  // 0 = 全エッジが中央、1 = 全エッジが辺縁
+  const avgEdgeDist = totalEdgeStrength > 0 ? edgeWeightedCenterDist / totalEdgeStrength : 0.5;
+  const edgeCentrality = 1 - avgEdgeDist;
+
+  return { medianSaturation, edgeCentrality };
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -46,7 +174,7 @@ export function extractFallbackPalette(
   const pixelCount = width * height;
   if (pixelCount === 0) return [];
 
-  const colorCounts = new Map<string, number>();
+  const colorCounts = new Map<number, number>();
   let validPixels = 0;
 
   for (let y = 0; y < height; y++) {
@@ -62,7 +190,7 @@ export function extractFallbackPalette(
       const qr = Math.round(r / FALLBACK_QUANTIZATION_STEP) * FALLBACK_QUANTIZATION_STEP;
       const qg = Math.round(g / FALLBACK_QUANTIZATION_STEP) * FALLBACK_QUANTIZATION_STEP;
       const qb = Math.round(b / FALLBACK_QUANTIZATION_STEP) * FALLBACK_QUANTIZATION_STEP;
-      const key = `${qr},${qg},${qb}`;
+      const key = (qr << 16) | (qg << 8) | qb;
 
       colorCounts.set(key, (colorCounts.get(key) ?? 0) + 1);
       validPixels++;
@@ -78,43 +206,11 @@ export function extractFallbackPalette(
 
   const sorted = Array.from(colorCounts.entries()).sort((a, b) => b[1] - a[1]);
   return sorted.slice(0, opts.numColors).map(([key, count]) => {
-    const [r, g, b] = key.split(",").map(Number) as [number, number, number];
+    const r = (key >> 16) & 0xff;
+    const g = (key >> 8) & 0xff;
+    const b = key & 0xff;
     return createDominantColor(r, g, b, count / validPixels);
   });
-}
-
-/**
- * 2色間の知覚的距離を計算（重み付きユークリッド距離、CIE Delta E 近似）。
- */
-export function calculateColorDistance(
-  r1: number,
-  g1: number,
-  b1: number,
-  r2: number,
-  g2: number,
-  b2: number,
-): number {
-  const rmean = (r1 + r2) / 2;
-  const deltaR = r1 - r2;
-  const deltaG = g1 - g2;
-  const deltaB = b1 - b2;
-
-  const weightR = 2 + rmean / 256;
-  const weightG = 4.0;
-  const weightB = 2 + (255 - rmean) / 256;
-
-  return Math.sqrt(
-    weightR * deltaR * deltaR + weightG * deltaG * deltaG + weightB * deltaB * deltaB,
-  );
-}
-
-/**
- * 2つの DominantColor の類似度を返す（0–1、1 が完全一致）。
- */
-export function calculateColorSimilarity(c1: DominantColor, c2: DominantColor): number {
-  const distance = Math.sqrt((c1.r - c2.r) ** 2 + (c1.g - c2.g) ** 2 + (c1.b - c2.b) ** 2);
-  const maxDistance = Math.sqrt(255 * 255 * 3);
-  return 1 - distance / maxDistance;
 }
 
 /**
@@ -282,19 +378,6 @@ function calculateEdgeWeight(
   return 1 + Math.min(edgeStrength / EDGE_STRENGTH_DIVISOR, 1);
 }
 
-/** 位置の分散度を計算 */
-function calculatePositionVariance(positions: Array<{ x: number; y: number }>): number {
-  if (positions.length < 2) return 0;
-
-  const meanX = positions.reduce((sum, p) => sum + p.x, 0) / positions.length;
-  const meanY = positions.reduce((sum, p) => sum + p.y, 0) / positions.length;
-
-  return (
-    positions.reduce((sum, p) => sum + (p.x - meanX) ** 2 + (p.y - meanY) ** 2, 0) /
-    positions.length
-  );
-}
-
 /** 画像全体の平均色を計算 */
 function calculateAverageColor(
   data: PixelData,
@@ -330,6 +413,13 @@ function calculateAverageColor(
   );
 }
 
+// ---------------------------------------------------------------------------
+// Main algorithm (CIELAB Delta E + adaptive thresholds)
+// ---------------------------------------------------------------------------
+
+/** Delta E のデフォルトマージ閾値 */
+const DEFAULT_MERGE_DELTA_E = 15;
+
 /** 高度な色抽出アルゴリズム（メインロジック） */
 function extractAdvanced(
   data: PixelData,
@@ -341,13 +431,35 @@ function extractAdvanced(
   const pixelCount = width * height;
   if (pixelCount === 0) return [];
 
+  // サンプリングパスで画像特性を分析
+  const stats = analyzeImageStats(data, width, height, channels);
+
+  // 適応的彩度閾値
+  const adaptedSatThreshold =
+    stats.medianSaturation < 0.1
+      ? Math.min(opts.saturationThreshold, 0.05)
+      : opts.saturationThreshold;
+
+  // 適応的中央重み係数 (0.3 〜 1.0)
+  // edgeCentrality が高い → イラスト型 → 中央重み強め
+  // edgeCentrality が低い → 写真型 → 中央重み弱め
+  const centerWeightScale = 0.3 + 0.7 * stats.edgeCentrality;
+
   const centerX = Math.floor(width / 2);
   const centerY = Math.floor(height / 2);
   const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY);
 
   const colorMap = new Map<
-    string,
-    { weight: number; saturation: number; positions: Array<{ x: number; y: number }> }
+    number,
+    {
+      weight: number;
+      saturation: number;
+      sumX: number;
+      sumY: number;
+      sumX2: number;
+      sumY2: number;
+      count: number;
+    }
   >();
 
   for (let y = 0; y < height; y++) {
@@ -357,71 +469,92 @@ function extractAdvanced(
       const g = data[i + 1] ?? 0;
       const b = data[i + 2] ?? 0;
 
-      // 彩度フィルタリング
+      // 適応的彩度フィルタ
       const saturation = calculateSaturation(r, g, b);
-      if (saturation < opts.saturationThreshold) continue;
+      if (saturation < adaptedSatThreshold) continue;
 
-      // 明度フィルタリング
       const brightness = (r + g + b) / 3;
       if (brightness < opts.brightnessMin || brightness > opts.brightnessMax) continue;
 
-      // 中央重み付け
+      // 適応的中央重み
       const distanceFromCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
-      const centerWeight = 1 + (maxDistance > 0 ? 1 - distanceFromCenter / maxDistance : 0);
+      const rawCenterWeight = maxDistance > 0 ? 1 - distanceFromCenter / maxDistance : 0;
+      const centerWeight = 1 + rawCenterWeight * centerWeightScale;
 
-      // エッジ重み付け
       const edgeWeight = calculateEdgeWeight(data, x, y, width, height, channels);
 
-      // 量子化
       const step = opts.quantizationStep;
       const qr = Math.round(r / step) * step;
       const qg = Math.round(g / step) * step;
       const qb = Math.round(b / step) * step;
-      const key = `${qr},${qg},${qb}`;
+      const key = (qr << 16) | (qg << 8) | qb;
 
       const totalWeight = centerWeight * edgeWeight * (1 + saturation);
 
       const existing = colorMap.get(key);
       if (existing) {
         existing.weight += totalWeight;
-        existing.positions.push({ x, y });
+        existing.sumX += x;
+        existing.sumY += y;
+        existing.sumX2 += x * x;
+        existing.sumY2 += y * y;
+        existing.count++;
       } else {
-        colorMap.set(key, { weight: totalWeight, saturation, positions: [{ x, y }] });
+        colorMap.set(key, {
+          weight: totalWeight,
+          saturation,
+          sumX: x,
+          sumY: y,
+          sumX2: x * x,
+          sumY2: y * y,
+          count: 1,
+        });
       }
     }
   }
 
   // スコアリング
   const colorEntries = Array.from(colorMap.entries()).map(([key, entry]) => {
-    const [r, g, b] = key.split(",").map(Number) as [number, number, number];
+    const r = (key >> 16) & 0xff;
+    const g = (key >> 8) & 0xff;
+    const b = key & 0xff;
 
-    const variance = calculatePositionVariance(entry.positions);
+    // オンライン分散: Var(X) + Var(Y) = (sumX2/n - (sumX/n)^2) + (sumY2/n - (sumY/n)^2)
+    let variance = 0;
+    if (entry.count >= 2) {
+      const n = entry.count;
+      variance =
+        entry.sumX2 / n - (entry.sumX / n) ** 2 + (entry.sumY2 / n - (entry.sumY / n) ** 2);
+    }
     const normalizedVariance = Math.min(variance / (width * height), 1);
     const score = entry.weight * (1 + entry.saturation) * (1 + normalizedVariance * 0.5);
 
-    return { r, g, b, score, weight: entry.weight, key };
+    // Lab を事前計算してマージで使う
+    const lab = rgbToLab(r, g, b);
+
+    return { r, g, b, score, weight: entry.weight, key, lab };
   });
 
-  // スコア順ソート → 類似色マージ
+  // スコア順ソート → Lab ベースの類似色マージ
   const sortedColors = colorEntries.sort((a, b) => b.score - a.score);
   const dominantColors: DominantColor[] = [];
-  const usedColors = new Set<string>();
+  const usedEntries: Array<{ key: number; lab: Lab }> = [];
 
   for (const color of sortedColors) {
     if (dominantColors.length >= opts.numColors) break;
-    if (usedColors.has(color.key)) continue;
+    if (usedEntries.some((u) => u.key === color.key)) continue;
 
+    // Delta E によるマージ判定
     let merged = false;
-    for (const used of usedColors) {
-      const [ur, ug, ub] = used.split(",").map(Number) as [number, number, number];
-      if (calculateColorDistance(color.r, color.g, color.b, ur, ug, ub) < opts.mergeDistance) {
+    for (const used of usedEntries) {
+      if (deltaE76(color.lab, used.lab) < DEFAULT_MERGE_DELTA_E) {
         merged = true;
         break;
       }
     }
 
     if (!merged) {
-      usedColors.add(color.key);
+      usedEntries.push({ key: color.key, lab: color.lab });
       dominantColors.push(
         createDominantColor(color.r, color.g, color.b, color.weight / pixelCount),
       );
@@ -430,3 +563,13 @@ function extractAdvanced(
 
   return dominantColors;
 }
+
+// ---------------------------------------------------------------------------
+// Test exports (internal functions exposed for testing)
+// ---------------------------------------------------------------------------
+
+export const _internals = {
+  rgbToLab,
+  deltaE76,
+  analyzeImageStats,
+};
