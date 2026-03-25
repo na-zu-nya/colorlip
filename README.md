@@ -1,192 +1,366 @@
 # colorlip
 
-Fast, general-purpose dominant color extraction library for Node.js and Browser. Especially strong with illustrations and artwork. Zero-dependency core.
+Fast dominant color extraction for Node.js and the browser.
+
+`colorlip` is a TypeScript-first library for extracting dominant colors and compact palettes from images. The core works on raw pixel buffers with zero runtime dependencies, and optional adapters handle image loading in Node.js (`sharp`) and browsers (Canvas API).
+
+[日本語版 README](./README.ja.md)
 
 ## Features
 
-- Adaptive color extraction using CIELAB Delta E perceptual distance
-- Rich output: hex, HSL, Lab, LCH, OKLab, OKLCH, CSS color strings, and hue category per color
-- Optional palette analysis with `dominant`, `accent`, and `swatches`
-- Platform-agnostic core (`colorlip`) works anywhere
-- Built-in adapters for **Node.js (sharp)** and **Browser (Canvas API)**
-- TypeScript-first with full type definitions
-- Zero runtime dependencies in core
+- Adaptive palette extraction based on image statistics
+- Perceptual color merging with CIELAB Delta E
+- Rich color output: `hex`, `HSL`, `Lab`, `LCH`, `OKLab`, `OKLCH`, CSS color strings, and hue category
+- Palette API with `dominant`, `accent`, and `swatches`
+- Platform-agnostic core for raw pixel data
+- Built-in adapters for `sharp` and Canvas
+- Zero runtime dependencies in the core package
 
 ## Install
+
+Core only:
 
 ```bash
 npm install colorlip
 ```
 
-For Node.js usage with sharp adapter:
+Node.js with the `sharp` adapter:
 
 ```bash
 npm install colorlip sharp
 ```
 
+`sharp` is an optional peer dependency and is only required when you use `colorlip/sharp`.
+
 ## Quick Start
 
-### Node.js (sharp)
+### Node.js
 
 ```ts
-import { getColors } from "colorlip/sharp";
+import { getColors, getPalette } from "colorlip/sharp";
 
 const colors = await getColors("photo.jpg");
-
-console.log(colors[0]);
-// {
-//   r: 42, g: 98, b: 168, hex: '#2A62A8', percentage: 0.34,
-//   hue: 213, saturation: 75, lightness: 41, hueCategory: 'blue',
-//   lab: { L: 41.2, a: -2.3, b: -40.1 },
-//   lch: { L: 41.2, C: 40.2, H: 266.7 },
-//   oklab: { L: 0.49, a: -0.03, b: -0.12 },
-//   oklch: { L: 0.49, C: 0.12, H: 256.7 },
-//   css: { rgb: 'rgb(42 98 168)', hsl: 'hsl(213 60% 41%)', ... }
-// }
-```
-
-```ts
-import { getPalette } from "colorlip/sharp";
-
 const palette = await getPalette("photo.jpg");
 
+console.log(colors[0]?.hex);
 console.log(palette.dominant?.hex);
 console.log(palette.accent?.hex);
 console.log(palette.swatches);
 ```
 
-### Browser (Canvas API)
+### Browser
 
 ```ts
-import { getColors } from "colorlip/canvas";
+import { getColors, getPalette } from "colorlip/canvas";
 
 const colors = await getColors(imgElement);
+const palette = await getPalette(imgElement);
 ```
 
-### Raw pixels (any environment)
+### Raw Pixels
 
 ```ts
-import { getColors } from "colorlip";
+import { getColors, getPalette } from "colorlip";
 
 const colors = getColors(pixelData, width, height, channels);
+const palette = getPalette(pixelData, width, height, channels);
 ```
+
+## Package Entry Points
+
+### `colorlip`
+
+Core API for raw pixel buffers.
+
+### `colorlip/sharp`
+
+Node.js adapter backed by `sharp`. It loads the image, downsizes it, and passes raw pixels to the core.
+
+### `colorlip/canvas`
+
+Browser adapter backed by the Canvas API. It accepts browser image sources, draws them to a canvas, and passes `ImageData` to the core.
 
 ## API
 
-### `getColors(source, options?)` — Node.js / sharp
+### Core
 
-Accepts a file path (`string`) or in-memory image data (`Buffer` / `Uint8Array`) and returns dominant colors.
+```ts
+import {
+  aggregateColors,
+  colorlip,
+  createDominantColor,
+  extractFallbackPalette,
+  getColors,
+  getHueCategory,
+  getPalette,
+  rgbToHex,
+  rgbToHsl,
+} from "colorlip";
+```
 
-### `getPalette(source, options?)` — Node.js / sharp
+#### `getColors(data, width, height, channels, options?)`
 
-Returns `{ dominant, accent, swatches }`.
+Extract dominant colors from raw pixel data.
 
-### `getColors(source, options?)` — Browser / Canvas
+- `data`: `Uint8Array | Uint8ClampedArray`
+- `width`: image width
+- `height`: image height
+- `channels`: typically `3` or `4`
 
-Accepts `HTMLImageElement`, `ImageBitmap`, `Blob`, or image URL string.
+Returns `ColorlipColor[]`.
 
-### `getPalette(source, options?)` — Browser / Canvas
+#### `getPalette(data, width, height, channels, options?)`
 
-Returns `{ dominant, accent, swatches }`.
+Extract a structured palette from raw pixel data.
 
-### `getColorsFromImageData(imageData, options?)` — Browser / Canvas
+Returns:
 
-Extracts from a Canvas `ImageData` object directly.
+```ts
+interface ColorlipPalette {
+  dominant: ColorlipColor | null;
+  accent: ColorlipColor | null;
+  swatches: ColorlipColor[];
+}
+```
 
-### `getColors(data, width, height, channels, options?)` — Core
+#### `colorlip(...)`
 
-Low-level function that works with raw pixel data (`Uint8Array` / `Uint8ClampedArray`). Platform-agnostic.
+Compatibility alias of `getColors(...)`.
 
-### `getPalette(data, width, height, channels, options?)` — Core
+### Node.js Adapter
 
-Low-level detailed API that returns a palette object.
+```ts
+import {
+  colorlip,
+  colorlipFromBuffer,
+  colorlipFromFile,
+  getColors,
+  getColorsFromPixels,
+  getPalette,
+  getPaletteFromPixels,
+} from "colorlip/sharp";
+```
 
-### Legacy aliases
+#### `getColors(source, options?)`
 
-Existing names remain available for compatibility:
+- `source`: `string | Buffer | Uint8Array`
 
+Loads an image through `sharp` and returns `Promise<ColorlipColor[]>`.
+
+#### `getPalette(source, options?)`
+
+- `source`: `string | Buffer | Uint8Array`
+
+Loads an image through `sharp` and returns `Promise<ColorlipPalette>`.
+
+#### `getColorsFromPixels(...)`
+
+Re-export of the raw-pixel core API.
+
+#### `getPaletteFromPixels(...)`
+
+Re-export of the raw-pixel core palette API.
+
+#### Legacy aliases
+
+- `colorlipFromFile(...)`
+- `colorlipFromBuffer(...)`
+
+### Browser Adapter
+
+```ts
+import {
+  colorlip,
+  colorlipFromImage,
+  colorlipFromImageData,
+  getColors,
+  getColorsFromImageData,
+  getColorsFromPixels,
+  getPalette,
+  getPaletteFromImageData,
+  getPaletteFromPixels,
+} from "colorlip/canvas";
+```
+
+#### `getColors(source, options?)`
+
+- `source`: `HTMLImageElement | ImageBitmap | Blob | string`
+
+Returns `Promise<ColorlipColor[]>`.
+
+#### `getPalette(source, options?)`
+
+- `source`: `HTMLImageElement | ImageBitmap | Blob | string`
+
+Returns `Promise<ColorlipPalette>`.
+
+#### `getColorsFromImageData(imageData, options?)`
+
+Extract colors directly from `ImageData`.
+
+#### `getPaletteFromImageData(imageData, options?)`
+
+Extract a palette directly from `ImageData`.
+
+#### `getColorsFromPixels(...)`
+
+Re-export of the raw-pixel core API.
+
+#### `getPaletteFromPixels(...)`
+
+Re-export of the raw-pixel core palette API.
+
+#### Legacy aliases
+
+- `colorlipFromImage(...)`
+- `colorlipFromImageData(...)`
+
+## Options
+
+```ts
+interface ExtractOptions {
+  numColors?: number;           // default: 3
+  saturationThreshold?: number; // default: 0.15
+  brightnessMin?: number;       // default: 20
+  brightnessMax?: number;       // default: 235
+  quantizationStep?: number;    // default: 12
+}
+```
+
+Default values:
+
+```ts
+{
+  numColors: 3,
+  saturationThreshold: 0.15,
+  brightnessMin: 20,
+  brightnessMax: 235,
+  quantizationStep: 12,
+}
+```
+
+## Output
+
+Each extracted color is returned as a `ColorlipColor`:
+
+```ts
+interface ColorlipColor {
+  r: number;
+  g: number;
+  b: number;
+  hex: string;
+  percentage: number;
+  hue: number;
+  saturation: number;
+  lightness: number;
+  hueCategory: HueCategory;
+  lab: { L: number; a: number; b: number };
+  lch: { L: number; C: number; H: number };
+  oklab: { L: number; a: number; b: number };
+  oklch: { L: number; C: number; H: number };
+  css: {
+    rgb: string;
+    hsl: string;
+    lab: string;
+    lch: string;
+    oklab: string;
+    oklch: string;
+  };
+}
+```
+
+Example:
+
+```ts
+{
+  r: 42,
+  g: 98,
+  b: 168,
+  hex: "#2A62A8",
+  percentage: 0.34,
+  hue: 213,
+  saturation: 60,
+  lightness: 41,
+  hueCategory: "blue",
+  lab: { L: 41.2, a: -2.3, b: -40.1 },
+  lch: { L: 41.2, C: 40.2, H: 266.7 },
+  oklab: { L: 0.49, a: -0.03, b: -0.12 },
+  oklch: { L: 0.49, C: 0.12, H: 256.7 },
+  css: {
+    rgb: "rgb(42 98 168)",
+    hsl: "hsl(213 60% 41%)",
+    lab: "lab(41.2 -2.3 -40.1)",
+    lch: "lch(41.2 40.2 266.7)",
+    oklab: "oklab(0.49 -0.03 -0.12)",
+    oklch: "oklch(0.49 0.12 256.7)",
+  },
+}
+```
+
+## Utility Functions
+
+```ts
+import {
+  aggregateColors,
+  createDominantColor,
+  getHueCategory,
+  rgbToHex,
+  rgbToHsl,
+} from "colorlip";
+```
+
+| Function | Description |
+| --- | --- |
+| `rgbToHex(r, g, b)` | Convert RGB to `#RRGGBB` |
+| `rgbToHsl(r, g, b)` | Convert RGB to `{ h, s, l }` |
+| `getHueCategory(hue)` | Convert hue to `"red" \| "orange" \| ... \| "gray"` |
+| `createDominantColor(r, g, b, percentage)` | Build a full `ColorlipColor` |
+| `aggregateColors(colorSets, numColors?)` | Merge multiple extraction results into top colors |
+| `extractFallbackPalette(...)` | Run the simplified fallback extractor directly |
+
+## How It Works
+
+The extraction pipeline is:
+
+1. Adapter input is resized to a maximum of `150x150` pixels. Raw-pixel core calls skip this step.
+2. A sampling pass estimates median saturation, saturation spread, and how centrally edges are concentrated.
+3. Pixels with `alpha < 0.5` are ignored. Remaining pixels are included with alpha-based weighting.
+4. Pixels are filtered by adaptive saturation floor and configured brightness range.
+5. Surviving pixels are quantized into bins and weighted by center bias, edge strength, saturation, and alpha.
+6. Nearby bins are pre-merged in Lab space using an adaptive Delta E threshold.
+7. Clusters are scored using weight, saturation, spatial distribution, center/border bias, and accent preference in OKLCH space.
+8. Final swatches are selected with another adaptive Delta E merge pass.
+9. `dominant` is the top swatch. `accent` is chosen from perceptually distant candidates or swatches.
+10. If the main path produces no candidates, a simpler histogram-based fallback extractor is used.
+
+## Alpha Handling
+
+When the input has an alpha channel:
+
+- Pixels with `alpha < 128` are ignored
+- Pixels with `alpha >= 128` are kept
+- Their contribution is weighted by `(alpha / 255) ** 2`
+
+This reduces semi-transparent edge noise while still allowing partially visible colors to contribute.
+
+## Notes
+
+- The core accepts both `Uint8Array` and `Uint8ClampedArray`
+- `channels` is expected to be `3` or `4`
+- Browser string sources are fetched with `fetch(...)`
+- Browser adapter resizing happens through `OffscreenCanvas`
+- Grayscale or heavily filtered inputs may fall back to the simpler histogram path
+
+## Compatibility Aliases
+
+These names remain available for compatibility:
+
+- `DominantColor` as a type alias of `ColorlipColor`
 - `colorlip(...)`
 - `colorlipFromFile(...)`
 - `colorlipFromBuffer(...)`
 - `colorlipFromImage(...)`
 - `colorlipFromImageData(...)`
-- `DominantColor` (type alias)
-
-### Options
-
-```ts
-interface ExtractOptions {
-  numColors?: number;            // Number of colors to extract (default: 3)
-  saturationThreshold?: number;  // Saturation filter threshold (default: 0.15)
-  brightnessMin?: number;        // Min brightness filter (default: 20)
-  brightnessMax?: number;        // Max brightness filter (default: 235)
-  quantizationStep?: number;     // Quantization step size (default: 12)
-}
-```
-
-### Output
-
-Each color in the result array is a `ColorlipColor`:
-
-```ts
-interface ColorlipColor {
-  r: number;           // 0-255
-  g: number;           // 0-255
-  b: number;           // 0-255
-  hex: string;         // e.g. "#2A62A8"
-  percentage: number;  // Relative weight (0-1)
-  hue: number;         // 0-360
-  saturation: number;  // 0-100
-  lightness: number;   // 0-100
-  hueCategory: HueCategory; // "red" | "orange" | "yellow" | "green" | "cyan" | "blue" | "violet" | "gray"
-
-  lab:   { L: number; a: number; b: number }  // CIE L*a*b*
-  lch:   { L: number; C: number; H: number }  // CIE LCH
-  oklab: { L: number; a: number; b: number }  // OKLab
-  oklch: { L: number; C: number; H: number }  // OKLCH
-
-  css: {
-    rgb:   string  // "rgb(42 98 168)"
-    hsl:   string  // "hsl(213 60% 41%)"
-    lab:   string  // "lab(43.1 -2.3 -40.1)"
-    lch:   string  // "lch(43.1 40.2 266.7)"
-    oklab: string  // "oklab(0.49 -0.03 -0.12)"
-    oklch: string  // "oklch(0.49 0.12 256.7)"
-  }
-}
-```
-
-```ts
-interface ColorlipPalette {
-  dominant: ColorlipColor | null
-  accent: ColorlipColor | null
-  swatches: ColorlipColor[]
-}
-```
-
-### Utility functions
-
-```ts
-import { rgbToHex, rgbToHsl, getHueCategory, createDominantColor, aggregateColors } from "colorlip";
-```
-
-| Function | Description |
-|----------|-------------|
-| `rgbToHex(r, g, b)` | RGB → hex string (e.g. `"#FF00AA"`) |
-| `rgbToHsl(r, g, b)` | RGB → `{ h, s, l }` |
-| `getHueCategory(hue)` | Hue (0–360) → `"red"` \| `"orange"` \| … \| `"gray"` |
-| `createDominantColor(r, g, b, percentage)` | Build a full `ColorlipColor` object from RGB + weight |
-| `aggregateColors(colorSets, numColors?)` | Merge multiple extraction results into top-N colors |
-
-## How It Works
-
-1. **Resize** — Image is downscaled to 150x150 max via adapter (sharp / canvas)
-2. **Analyze** — Sampling pass estimates image characteristics (median saturation, edge centrality)
-3. **Extract** — Single-pass pixel scan with adaptive saturation threshold, center weighting, and edge weighting
-4. **Quantize** — Colors are bucketed by quantization step into a Map
-5. **Score** — Each color bucket is scored by weight, saturation, and spatial variance
-6. **Merge** — Similar colors are merged using CIE76 Delta E (threshold: 15)
-7. **Fallback** — If no colors pass the filter, a simpler histogram-based extraction is used
 
 ## License
 

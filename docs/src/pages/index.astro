@@ -3,27 +3,1190 @@ import Base from "../layouts/Base.astro";
 ---
 
 <Base>
-  <main>
-    <h1>colorlip</h1>
-    <p>coming soon</p>
-  </main>
+  <!-- Hero -->
+  <header class="hero">
+    <div class="container">
+      <h1 class="title">colorlip</h1>
+      <p class="lead">
+        Extract dominant colors from any image.<br />
+        Zero-dependency core. Works everywhere.
+      </p>
+      <div class="install-box">
+        <code id="install-cmd">npm install colorlip</code>
+        <button
+          class="copy-btn"
+          id="copy-install"
+          type="button"
+          aria-label="Copy install command"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <rect x="5" y="5" width="9" height="9" rx="1.5"></rect>
+            <path
+              d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"
+            ></path>
+          </svg>
+        </button>
+      </div>
+      <div class="hero-icon">🌷</div>
+    </div>
+  </header>
+
+  <!-- Demo -->
+  <section class="demo-section" id="demo">
+    <div class="container">
+      <h2>Try it</h2>
+      <div class="demo-grid">
+        <div class="demo-left">
+          <div class="dropzone-wrapper">
+            <div class="dropzone" id="dropzone">
+              <img id="preview-img" class="preview-img" alt="" hidden />
+              <div class="dropzone-prompt" id="dropzone-prompt">
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 40 40"
+                  fill="none"
+                  stroke="#aaa"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="4" y="8" width="32" height="24" rx="2"></rect>
+                  <circle cx="14" cy="18" r="3"></circle>
+                  <path d="M4 28l8-8 5 5 7-7 12 10"></path>
+                </svg>
+                <p>Drop an image here</p>
+                <p class="sub">or click to select</p>
+              </div>
+              <input type="file" id="file-input" accept="image/*" hidden />
+            </div>
+            <div class="inline-swatches" id="inline-swatches" hidden></div>
+          </div>
+          <div class="options-row">
+            <label class="range-label">
+              <span>Colors</span>
+              <input type="range" id="num-colors" min="2" max="8" value="6" />
+              <span class="range-val" id="num-colors-val">6</span>
+            </label>
+          </div>
+        </div>
+        <div class="demo-right" id="demo-output">
+          <div class="output-empty" id="output-empty">
+            <p>Select or drop an image to see extracted colors</p>
+          </div>
+          <div class="output-results" id="output-results" hidden>
+            <div class="palette-bar" id="palette-bar"></div>
+            <div class="color-list" id="color-list"></div>
+            <div class="json-panel">
+              <div class="json-tabs">
+                <button class="json-tab active" data-tab="palette"
+                  >palette</button
+                >
+                <button class="json-tab" data-tab="colors">colors</button>
+              </div>
+              <pre class="json-pre" id="json-output"></pre>
+            </div>
+            <div class="perf-bar" id="perf-bar" hidden></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- API -->
+  <section class="api-section" id="api">
+    <div class="container">
+      <h2>API</h2>
+
+      <div class="api-grid">
+        <div class="api-card">
+          <h3>Node.js</h3>
+          <pre><code>{`import { getColors } from "colorlip/sharp";
+
+const colors = await getColors("photo.jpg");
+
+colors[0].hex;      // "#2A62A8"
+colors[0].css.oklch; // "oklch(0.49 0.12 256.7)"`}</code></pre>
+          <p class="api-note">Requires <code>sharp</code> as a peer dependency.</p>
+        </div>
+
+        <div class="api-card">
+          <h3>Browser</h3>
+          <pre><code>{`import { getColors } from "colorlip/canvas";
+
+const colors = await getColors(imgElement);
+// Also: Blob, ImageBitmap, URL string`}</code></pre>
+        </div>
+      </div>
+
+      <div class="api-card wide">
+        <h3>getPalette()</h3>
+        <p>
+          Structured palette analysis — dominant color, accent, and swatches.
+        </p>
+        <pre><code>{`import { getPalette } from "colorlip/sharp";
+
+const palette = await getPalette("photo.jpg");
+
+palette.dominant   // Most prominent color
+palette.accent     // Complementary accent
+palette.swatches   // All extracted ColorlipColor[]`}</code></pre>
+      </div>
+
+      <div class="api-card wide">
+        <h3>ColorlipColor</h3>
+        <p>
+          Each extracted color includes RGB, hex, HSL, perceptual color spaces,
+          CSS strings, and hue classification.
+        </p>
+        <pre><code>{`{
+  r: 42, g: 98, b: 168,
+  hex: "#2A62A8",
+  percentage: 0.34,
+
+  hue: 213, saturation: 75, lightness: 41,
+  hueCategory: "blue",
+
+  lab:   { L: 41.2, a: -2.3, b: -40.1 },
+  lch:   { L: 41.2, C: 40.2, H: 266.7 },
+  oklab: { L: 0.49, a: -0.03, b: -0.12 },
+  oklch: { L: 0.49, C: 0.12, H: 256.7 },
+
+  css: {
+    rgb:   "rgb(42 98 168)",
+    hsl:   "hsl(213 60% 41%)",
+    lab:   "lab(41.2 -2.3 -40.1)",
+    lch:   "lch(41.2 40.2 266.7)",
+    oklab: "oklab(0.49 -0.03 -0.12)",
+    oklch: "oklch(0.49 0.12 256.7)"
+  }
+}`}</code></pre>
+      </div>
+
+      <div class="api-card wide">
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>numColors</code></td>
+                <td>3</td>
+                <td>Number of colors to extract</td>
+              </tr>
+              <tr>
+                <td><code>saturationThreshold</code></td>
+                <td>0.15</td>
+                <td>Minimum saturation (0–1)</td>
+              </tr>
+              <tr>
+                <td><code>brightnessMin</code></td>
+                <td>20</td>
+                <td>Minimum brightness (0–255)</td>
+              </tr>
+              <tr>
+                <td><code>brightnessMax</code></td>
+                <td>235</td>
+                <td>Maximum brightness (0–255)</td>
+              </tr>
+              <tr>
+                <td><code>quantizationStep</code></td>
+                <td>12</td>
+                <td>Color quantization step size</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <a
+        href="https://github.com/na-zu-nya/colorlip"
+        target="_blank"
+        rel="noopener">GitHub</a
+      >
+      <span class="sep">|</span>
+      <a href="https://x.com/nazunya" target="_blank" rel="noopener">nazunya</a
+      >
+    </div>
+  </footer>
 </Base>
 
 <style>
-  main {
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 6rem 1.5rem 4rem;
+    text-align: center;
+    background: linear-gradient(180deg, #fff 0%, #faf8f6 100%);
+    border-bottom: 1px solid #eee;
+  }
+
+  .title {
+    font-family: "Supermercado One", system-ui, sans-serif;
+    font-size: clamp(2.5rem, 7vw, 4.5rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .title::after {
+    content: "";
+    display: block;
+    width: 100px;
+    height: 3px;
+    margin: 1rem auto 0;
+    background: linear-gradient(90deg, #e8a0bf, #f2c57c, #a0c4e8, #c4a0e8);
+    border-radius: 2px;
+  }
+
+  .lead {
+    margin-top: 1.25rem;
+    font-size: 1.05rem;
+    color: #555;
+    line-height: 1.8;
+  }
+
+  .install-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+    padding: 0.6rem 0.75rem 0.6rem 1rem;
+    background: #1a1a1a;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #ccc;
+  }
+
+  .install-box code {
+    color: #e8e8e8;
+    user-select: all;
+  }
+
+  .copy-btn {
     display: grid;
-    place-content: center;
-    min-height: 100dvh;
+    place-items: center;
+    padding: 0.3rem;
+    border: none;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .copy-btn:hover {
+    color: #fff;
+  }
+
+  .hero-icon {
+    margin-top: 1.5rem;
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  /* ---------- Section common ---------- */
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ---------- Demo ---------- */
+  .demo-section {
+    padding: 4rem 0;
+  }
+
+  .demo-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 720px) {
+    .demo-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Drop zone wrapper */
+  .dropzone-wrapper {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px dashed #d0d0d0;
+    background: #fff;
+    transition:
+      border-color 0.2s,
+      background 0.2s;
+  }
+  .dropzone-wrapper.has-image {
+    border: none;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+  }
+  .dropzone-wrapper:hover {
+    border-color: #bbb;
+  }
+  .dropzone-wrapper.drag-over {
+    border-color: #5bc0eb;
+    border-style: solid;
+  }
+
+  .dropzone {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  .dropzone-wrapper.has-image .dropzone {
+    aspect-ratio: auto;
+  }
+
+  .dropzone-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: #999;
+    pointer-events: none;
+  }
+  .dropzone-prompt p {
+    font-size: 0.95rem;
+  }
+  .dropzone-prompt .sub {
+    font-size: 0.8rem;
+    color: #bbb;
+  }
+
+  .preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    padding: 0.5rem;
+  }
+
+  .preview-img.fade-in {
+    animation: img-fade 0.4s ease-out both;
+  }
+
+  @keyframes img-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Options */
+  .options-row {
+    margin-top: 2rem;
+  }
+  .range-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+  }
+  .range-label input[type="range"] {
+    flex: 1;
+    accent-color: #1a1a1a;
+  }
+  .range-val {
+    width: 1.5em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Output */
+  .demo-right {
+    position: sticky;
+    top: 2rem;
+  }
+
+  .output-empty {
+    display: grid;
+    place-items: center;
+    min-height: 240px;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    background: #fff;
+    color: #bbb;
+    font-size: 0.9rem;
+  }
+
+  .output-results {
+    border: 1px solid #eee;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .palette-bar {
+    height: 4px;
+    margin: 0.75rem 1rem 0;
+    border-radius: 2px;
+  }
+
+  /* dynamic element styles moved to global block below */
+
+  /* Performance bar */
+  .perf-bar {
+    padding: 0.5rem 1rem;
+    font-size: 0.72rem;
+    color: #999;
+    border-top: 1px solid #f0f0f0;
+    font-family:
+      ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    display: flex;
+    gap: 1.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* JSON panel */
+  .json-panel {
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .json-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 1rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .json-tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    color: #999;
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s;
+    font-family:
+      ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .json-tab:hover {
+    color: #666;
+  }
+  .json-tab.active {
+    color: #1a1a1a;
+    border-bottom-color: #1a1a1a;
+  }
+
+  .json-pre {
+    margin: 0;
+    padding: 0.75rem 1rem 1rem;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    color: #555;
+    max-height: 360px;
+  }
+
+  /* ---------- API ---------- */
+  .api-section {
+    padding: 4rem 0;
+    background: #fff;
+    border-top: 1px solid #eee;
+  }
+
+  .api-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 720px) {
+    .api-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .api-card {
+    border: 1px solid #eee;
+    border-radius: 10px;
+    padding: 1.25rem;
+    background: #fafafa;
+  }
+  .api-card.wide {
+    margin-bottom: 1rem;
+  }
+
+  .api-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.01em;
+  }
+
+  .api-card p {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+  }
+
+  .api-card pre {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 0.875rem 1rem;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    color: #444;
+  }
+
+  .api-note {
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
+    color: #999;
+  }
+  .api-note code {
+    background: #eee;
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.85em;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  th {
+    text-align: left;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 2px solid #eee;
+    color: #333;
+  }
+  td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #f0f0f0;
+    color: #555;
+  }
+  td code {
+    background: #f0f0f0;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    font-size: 0.88em;
+  }
+
+  /* ---------- Footer ---------- */
+  .site-footer {
+    padding: 2.5rem 0;
+    border-top: 1px solid #eee;
     text-align: center;
   }
 
-  h1 {
-    font-size: 3rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
   }
 
-  p {
+  .footer-inner a {
     color: #666;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .footer-inner a:hover {
+    color: #1a1a1a;
+  }
+
+  .sep {
+    color: #ddd;
   }
 </style>
+
+<style is:global>
+  /* ---- Appear animation ---- */
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .anim-pop {
+    animation: pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+
+  /* ---- Inline swatches (below dropzone) ---- */
+  .inline-swatches {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.5rem;
+    background: #fff;
+  }
+
+  .inline-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition:
+      transform 0.15s,
+      border-color 0.15s,
+      box-shadow 0.15s;
+  }
+  .inline-swatch:hover {
+    transform: scale(1.1);
+    border-color: rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+  }
+
+  /* ---- Color list (right panel) ---- */
+  .color-list {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .color-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 48px;
+  }
+
+  .color-chip {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .color-chip.empty {
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 3px,
+      #e8e8e8 3px,
+      #e8e8e8 4px
+    ) !important;
+    border-color: #e0e0e0;
+  }
+
+  .color-meta {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .color-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #999;
+    line-height: 1;
+    margin-bottom: 0.2rem;
+  }
+
+  .color-hex {
+    font-family:
+      ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+    color: #1a1a1a;
+    text-align: left;
+  }
+  .color-hex:hover {
+    text-decoration: underline;
+  }
+
+  .color-css {
+    font-size: 0.75rem;
+    color: #999;
+    font-family:
+      ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .color-divider {
+    border: none;
+    border-top: 1px solid #f0f0f0;
+    margin: 0.25rem 0;
+  }
+
+  .swatches-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .swatch-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .swatch-chip {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .swatch-hex {
+    font-size: 0.55rem;
+    color: #999;
+    font-family:
+      ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+  .swatch-hex:hover {
+    color: #1a1a1a;
+  }
+
+  /* ---- Copy toast ---- */
+  .copy-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 0.78rem;
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 1000;
+    animation: toast-in 0.25s ease-out, toast-out 0.25s 1.2s ease-in forwards;
+    font-family:
+      ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  .copy-toast svg {
+    flex-shrink: 0;
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes toast-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+</style>
+
+<script>
+  import { getColors, getPalette } from "colorlip";
+  import type { ColorlipPalette, ColorlipColor } from "colorlip";
+
+  // ---- State ----
+  let currentImageData: ImageData | null = null;
+  let lastPalette: ColorlipPalette | null = null;
+  let lastColors: ColorlipColor[] | null = null;
+  let activeJsonTab: "palette" | "colors" = "palette";
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // ---- Elements ----
+  const dropzoneWrapper = document.querySelector(".dropzone-wrapper")!;
+  const dropzone = document.getElementById("dropzone")!;
+  const prompt = document.getElementById("dropzone-prompt")!;
+  const previewImg = document.getElementById("preview-img") as HTMLImageElement;
+  const fileInput = document.getElementById("file-input") as HTMLInputElement;
+  const inlineSwatches = document.getElementById("inline-swatches")!;
+  const numColorsInput = document.getElementById(
+    "num-colors"
+  ) as HTMLInputElement;
+  const numColorsVal = document.getElementById("num-colors-val")!;
+  const outputEmpty = document.getElementById("output-empty")!;
+  const outputResults = document.getElementById("output-results")!;
+  const paletteBar = document.getElementById("palette-bar")!;
+  const colorList = document.getElementById("color-list")!;
+  const jsonOutput = document.getElementById("json-output")!;
+  const jsonTabs = document.querySelectorAll<HTMLButtonElement>(".json-tab");
+  const perfBar = document.getElementById("perf-bar")!;
+  const copyInstall = document.getElementById("copy-install")!;
+
+  // ---- Drop zone ----
+
+  dropzone.addEventListener("click", () => fileInput.click());
+
+  dropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropzoneWrapper.classList.add("drag-over");
+  });
+
+  dropzone.addEventListener("dragleave", () => {
+    dropzoneWrapper.classList.remove("drag-over");
+  });
+
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzoneWrapper.classList.remove("drag-over");
+    const file = e.dataTransfer?.files[0];
+    if (file && file.type.startsWith("image/")) {
+      loadFile(file);
+    }
+  });
+
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    if (file) {
+      loadFile(file);
+    }
+  });
+
+  function loadFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        showPreview(img.src);
+        processImage(img);
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function showPreview(src: string) {
+    previewImg.classList.remove("fade-in");
+    void previewImg.offsetWidth; // force reflow
+    previewImg.src = src;
+    previewImg.hidden = false;
+    previewImg.classList.add("fade-in");
+    prompt.hidden = true;
+    dropzoneWrapper.classList.add("has-image");
+  }
+
+  // ---- Processing ----
+
+  const MAX_SIZE = 150;
+
+  function processImage(img: HTMLImageElement) {
+    const scale = Math.min(MAX_SIZE / img.naturalWidth, MAX_SIZE / img.naturalHeight, 1);
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    currentImageData = ctx.getImageData(0, 0, w, h);
+    extractAndDisplay();
+  }
+
+  function extractAndDisplay() {
+    if (!currentImageData) return;
+
+    const numColors = parseInt(numColorsInput.value, 10);
+    const d = currentImageData;
+
+    const t0 = performance.now();
+    lastPalette = getPalette(d.data, d.width, d.height, 4, { numColors });
+    lastColors = getColors(d.data, d.width, d.height, 4, { numColors });
+    const elapsed = performance.now() - t0;
+
+    displayResults(lastPalette);
+    updateJsonOutput();
+    showPerf(elapsed);
+  }
+
+  function showPerf(ms: number) {
+    perfBar.hidden = false;
+    const msText = ms < 1 ? `${(ms * 1000).toFixed(0)}µs` : `${ms.toFixed(2)}ms`;
+    const ips = ms > 0 ? (1000 / ms).toFixed(0) : "∞";
+    perfBar.textContent = `${msText}  ·  ${ips} images/sec`;
+  }
+
+  function extractDebounced() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => extractAndDisplay(), 150);
+  }
+
+  // ---- Display ----
+
+  function displayResults(palette: ColorlipPalette) {
+    outputEmpty.hidden = true;
+    outputResults.hidden = false;
+
+    // Palette bar
+    const allColors = palette.swatches;
+    if (allColors.length > 0) {
+      const n = allColors.length;
+      const gap = 0.5;
+      const stops: string[] = [];
+      for (let i = 0; i < n; i++) {
+        const segStart = (i / n) * 100;
+        const segEnd = ((i + 1) / n) * 100;
+        const from = i > 0 ? segStart + gap : segStart;
+        const to = i < n - 1 ? segEnd - gap : segEnd;
+        if (i > 0) stops.push(`transparent ${segStart}%`, `transparent ${from}%`);
+        stops.push(`${allColors[i].hex} ${from}%`, `${allColors[i].hex} ${to}%`);
+        if (i < n - 1) stops.push(`transparent ${to}%`);
+      }
+      paletteBar.style.background = `linear-gradient(90deg, ${stops.join(", ")})`;
+    } else {
+      paletteBar.style.background = "#eee";
+    }
+
+    // ---- Right panel: color list ----
+    colorList.innerHTML = "";
+    let animIndex = 0;
+
+    colorList.appendChild(
+      createColorEntry(palette.dominant, "Dominant", animIndex++)
+    );
+    colorList.appendChild(
+      createColorEntry(palette.accent, "Accent", animIndex++)
+    );
+
+    if (palette.swatches.length > 0) {
+      const divider = document.createElement("hr");
+      divider.className = "color-divider";
+      colorList.appendChild(divider);
+
+      const swatchLabel = document.createElement("div");
+      swatchLabel.className = "color-label";
+      swatchLabel.style.padding = "0.25rem 0 0";
+      swatchLabel.textContent = "Swatches";
+      colorList.appendChild(swatchLabel);
+
+      const swatchRow = document.createElement("div");
+      swatchRow.className = "swatches-row";
+      swatchRow.style.padding = "0.5rem 0 0";
+      const swatches = palette.swatches;
+      for (let si = 0; si < swatches.length; si++) {
+        const color = swatches[si];
+        const isLast = si === swatches.length - 1;
+        const item = document.createElement("div");
+        item.className = "swatch-item";
+
+        const wrap = document.createElement("div");
+        wrap.className = "chip-wrap";
+
+        const chip = document.createElement("div");
+        chip.className = "swatch-chip anim-pop";
+        chip.style.background = color.hex;
+        const delay = animIndex * 0.06;
+        chip.style.animationDelay = `${delay}s`;
+
+        wrap.appendChild(chip);
+
+        const hex = document.createElement("button");
+        hex.className = "swatch-hex";
+        hex.textContent = color.hex;
+        hex.addEventListener("click", () => copyText(color.hex));
+
+        item.appendChild(wrap);
+        item.appendChild(hex);
+        swatchRow.appendChild(item);
+        animIndex++;
+      }
+      colorList.appendChild(swatchRow);
+    }
+
+    // ---- Inline swatches (below dropzone image) ----
+    inlineSwatches.innerHTML = "";
+    if (allColors.length > 0) {
+      inlineSwatches.hidden = false;
+      allColors.forEach((c, i) => {
+        const wrap = document.createElement("div");
+        wrap.className = "chip-wrap";
+
+        const dot = document.createElement("div");
+        dot.className = "inline-swatch anim-pop";
+        dot.style.background = c.hex;
+        const delay = i * 0.06;
+        dot.style.animationDelay = `${delay}s`;
+        dot.title = c.hex;
+        dot.addEventListener("click", () => copyText(c.hex));
+
+        wrap.appendChild(dot);
+        inlineSwatches.appendChild(wrap);
+      });
+    } else {
+      inlineSwatches.hidden = true;
+    }
+  }
+
+  function createColorEntry(
+    color: ColorlipColor | null,
+    label: string,
+    animIndex: number
+  ): HTMLDivElement {
+    const entry = document.createElement("div");
+    entry.className = "color-entry";
+
+    const wrap = document.createElement("div");
+    wrap.className = "chip-wrap";
+
+    const chip = document.createElement("div");
+    chip.className = `color-chip anim-pop${color ? "" : " empty"}`;
+    const delay = animIndex * 0.06;
+    chip.style.animationDelay = `${delay}s`;
+    if (color) {
+      chip.style.background = color.hex;
+    }
+
+    wrap.appendChild(chip);
+
+    const meta = document.createElement("div");
+    meta.className = "color-meta";
+
+    const labelEl = document.createElement("div");
+    labelEl.className = "color-label";
+    labelEl.textContent = label;
+    meta.appendChild(labelEl);
+
+    if (color) {
+      const hexBtn = document.createElement("button");
+      hexBtn.className = "color-hex";
+      hexBtn.textContent = color.hex;
+      hexBtn.addEventListener("click", () => copyText(color.hex));
+
+      const cssEl = document.createElement("div");
+      cssEl.className = "color-css";
+      cssEl.textContent = color.css.oklch;
+
+      meta.appendChild(hexBtn);
+      meta.appendChild(cssEl);
+    } else {
+      const placeholder = document.createElement("div");
+      placeholder.className = "color-css";
+      placeholder.textContent = "—";
+      meta.appendChild(placeholder);
+    }
+
+    entry.appendChild(wrap);
+    entry.appendChild(meta);
+
+    return entry;
+  }
+
+  // ---- JSON tabs ----
+
+  function updateJsonOutput() {
+    if (activeJsonTab === "palette" && lastPalette) {
+      jsonOutput.textContent = JSON.stringify(lastPalette, null, 2);
+    } else if (activeJsonTab === "colors" && lastColors) {
+      jsonOutput.textContent = JSON.stringify(lastColors, null, 2);
+    }
+  }
+
+  jsonTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      jsonTabs.forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      activeJsonTab = tab.dataset.tab as "palette" | "colors";
+      updateJsonOutput();
+    });
+  });
+
+  // ---- numColors slider (debounced) ----
+
+  numColorsInput.addEventListener("input", () => {
+    numColorsVal.textContent = numColorsInput.value;
+    extractDebounced();
+  });
+
+  // ---- Copy helper ----
+
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function copyText(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showCopyToast(text);
+    } catch {
+      // noop
+    }
+  }
+
+  function showCopyToast(text: string) {
+    document.querySelectorAll(".copy-toast").forEach((el) => el.remove());
+    if (toastTimer) clearTimeout(toastTimer);
+
+    const toast = document.createElement("div");
+    toast.className = "copy-toast";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "14");
+    svg.setAttribute("height", "14");
+    svg.setAttribute("viewBox", "0 0 14 14");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("stroke-linecap", "round");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M3 7.5l3 3 5-6");
+    svg.appendChild(path);
+    toast.appendChild(svg);
+    toast.appendChild(document.createTextNode(` ${text}`));
+    document.body.appendChild(toast);
+
+    toastTimer = setTimeout(() => toast.remove(), 1600);
+  }
+
+  copyInstall.addEventListener("click", () => {
+    copyText("npm install colorlip");
+  });
+
+  // ---- Boot ----
+</script>

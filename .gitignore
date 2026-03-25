@@ -1,6 +1,7 @@
 node_modules/
 dist/
 docs/dist/
+docs/.astro/
 *.tsbuildinfo
 .DS_Store
 
