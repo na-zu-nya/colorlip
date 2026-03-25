@@ -1,21 +1,35 @@
 # colorlip
 
-Fast dominant color extraction for Node.js and the browser.
+Perceptually tuned dominant color and palette extraction for Node.js and the browser.
 
-`colorlip` is a lightweight, fast, TypeScript-first library for extracting dominant colors and compact palettes from images. It is tuned to pick colors that feel more perceptually right, especially for illustrations, artwork, and product images where visual impression matters. It is designed with visually driven use cases in mind, including illustration communities, social platforms, and commerce experiences.
+`colorlip` is a lightweight, fast, TypeScript-first library for extracting dominant colors and compact palettes from images. It is tuned to pick colors that feel more visually representative, especially for illustrations, artwork, and product images where impression matters more than raw pixel counts. It is designed with visually driven use cases in mind, including illustration communities, social platforms, and commerce experiences.
 
 [日本語版 README](./README.ja.md)
 
+![colorlip preview](./docs/public/hero.jpg)
+
 ## Features
 
-- Perceptually tuned color extraction that works well for illustrations and artwork
+- Perceptually tuned color extraction for visually representative results
+- Composition-aware weighting with center/border and edge-aware heuristics
 - Adaptive palette extraction based on image statistics
 - Natural merging of nearby colors using CIELAB Delta E
-- Practical palette API with `dominant`, `accent`, and `swatches`
+- Practical palette API with role-based `dominant`, `accent`, and `swatches`
 - Rich color output: `hex`, `HSL`, `Lab`, `LCH`, `OKLab`, `OKLCH`, CSS color strings, and hue category
 - Platform-agnostic core for raw pixel data
 - Built-in adapters for `sharp` and Canvas
 - Zero runtime dependencies in the core package
+
+## Why colorlip
+
+`colorlip` is not just a color quantizer.
+
+Many palette extractors mainly summarize image-wide color distribution. `colorlip` is tuned to choose colors that feel important in the image, using lightweight composition-aware heuristics and perceptual color spaces.
+
+- It adapts thresholds from the image itself instead of relying only on fixed cutoffs
+- It uses center/border and edge-aware weighting so large background areas do not always win
+- It merges nearby colors perceptually in Lab, then picks `dominant` and `accent` for different roles
+- It is especially tuned for illustrations, artwork, thumbnails, and visually curated image sets
 
 ## Install
 
@@ -329,10 +343,23 @@ The extraction pipeline is:
 4. Pixels are filtered by adaptive saturation floor and configured brightness range.
 5. Surviving pixels are quantized into bins and weighted by center bias, edge strength, saturation, and alpha.
 6. Nearby bins are pre-merged in Lab space using an adaptive Delta E threshold.
-7. Clusters are scored using weight, saturation, spatial distribution, center/border bias, and accent preference in OKLCH space.
+7. Clusters are scored from weighted presence, then adjusted by spatial distribution, center/border bias, centroid position, spread, and accent preference in OKLCH space.
 8. Final swatches are selected with another adaptive Delta E merge pass.
-9. `dominant` is the top swatch. `accent` is chosen from perceptually distant candidates or swatches.
-10. If the main path produces no candidates, a simpler histogram-based fallback extractor is used.
+9. `dominant` is chosen from the leading swatches, not only by raw rank but also by a dominant-preference pass in OKLCH space. This helps promote colors that feel more representative and visually salient, instead of always keeping the darkest or heaviest cluster at the top.
+10. `accent` is chosen from perceptually distant candidates or swatches.
+11. If the main path produces no candidates, a simpler histogram-based fallback extractor is used.
+
+## Dominant Selection
+
+`palette.dominant` is selected in two stages:
+
+1. `colorlip` first builds and scores cluster candidates from weighted image regions.
+2. After final swatches are decided, the leading swatches are re-ranked for `dominant` selection using:
+   - the original extraction score
+   - weighted presence
+   - a perceptual preference in OKLCH space
+
+This extra pass keeps `dominant` closer to the color that feels like the image's representative color, especially for photos where a large dark area might otherwise win by area alone.
 
 ## Alpha Handling
 

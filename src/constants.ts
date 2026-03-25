@@ -38,5 +38,17 @@ export const ACCENT_OKLCH_LIGHTNESS_SIGMA = 0.18;
 /** OKLCH 彩度スコアの広がり */
 export const ACCENT_OKLCH_CHROMA_SIGMA = 0.1;
 
+/** ドミナント色として好ましい OKLCH の目標明度 */
+export const DOMINANT_OKLCH_LIGHTNESS_TARGET = 0.68;
+
+/** ドミナント色として好ましい OKLCH の目標彩度 */
+export const DOMINANT_OKLCH_CHROMA_TARGET = 0.14;
+
+/** OKLCH 明度スコアの広がり */
+export const DOMINANT_OKLCH_LIGHTNESS_SIGMA = 0.2;
+
+/** OKLCH 彩度スコアの広がり */
+export const DOMINANT_OKLCH_CHROMA_SIGMA = 0.09;
+
 /** sharp アダプター用リサイズ上限 */
 export const MAX_RESIZE = 150;

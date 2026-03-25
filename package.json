@@ -76,7 +76,7 @@
     "happy-dom": "^17.0.0",
     "node-vibrant": "^4.0.4",
     "quantize": "^1.0.2",
-    "sharp": "^0.33.0",
+    "sharp": "^0.34.5",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
