@@ -6,6 +6,9 @@ Perceptually tuned dominant color and palette extraction for Node.js and the bro
 
 [日本語版 README](./README.ja.md)
 
+Try it in the browser:
+https://na-zu-nya.github.io/colorlip/
+
 ![colorlip preview](./docs/public/hero.jpg)
 
 ## Features

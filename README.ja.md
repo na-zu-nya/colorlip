@@ -8,6 +8,9 @@ Node.js とブラウザ向けの、知覚寄りに調整した代表色・パレ
 
 [English README](./README.md)
 
+ブラウザですぐ試せます:
+https://na-zu-nya.github.io/colorlip/
+
 ![colorlip preview](./docs/public/hero.jpg)
 
 ## 特徴
