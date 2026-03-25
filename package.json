@@ -1,7 +1,15 @@
 {
   "name": "colorlip",
-  "version": "0.2.0",
-  "description": "Extract dominant colors from images — platform-agnostic, zero-dependency core",
+  "version": "1.0.0",
+  "description": "Composition-aware, perceptually tuned dominant color and palette extraction for images",
+  "homepage": "https://na-zu-nya.github.io/colorlip/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/na-zu-nya/colorlip.git"
+  },
+  "bugs": {
+    "url": "https://github.com/na-zu-nya/colorlip/issues"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
