@@ -76,8 +76,8 @@ export interface ImageInfo {
   channels: number;
 }
 
-/** 抽出された代表色 */
-export interface DominantColor {
+/** 抽出された色 */
+export interface ColorlipColor {
   r: number;
   g: number;
   b: number;
@@ -101,6 +101,16 @@ export interface DominantColor {
   oklch: OKLCH;
   /** CSS カラー文字列 */
   css: CSSColors;
+}
+
+/** v0.x 互換エイリアス */
+export type DominantColor = ColorlipColor;
+
+/** パレット解析結果 */
+export interface ColorlipPalette {
+  dominant: ColorlipColor | null;
+  accent: ColorlipColor | null;
+  swatches: ColorlipColor[];
 }
 
 /** 抽出オプション */

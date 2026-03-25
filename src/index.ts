@@ -1,6 +1,8 @@
 // Types
 export type {
   CSSColors,
+  ColorlipColor,
+  ColorlipPalette,
   DominantColor,
   ExtractOptions,
   HSL,
@@ -21,6 +23,8 @@ export {
   aggregateColors,
   createDominantColor,
   extractFallbackPalette,
+  getColors,
+  getPalette,
   colorlip,
   getHueCategory,
   rgbToHex,

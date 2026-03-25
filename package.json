@@ -39,7 +39,9 @@
     }
   },
   "sideEffects": false,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
@@ -48,7 +50,12 @@
     "test:coverage": "vitest run --coverage",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "compare:samples": "npm run build && node samples/try-compare.ts",
+    "benchmark:speed": "npm run build && node benchmarks/speed.mjs",
+    "docs:dev": "npm --prefix docs run dev",
+    "docs:build": "npm --prefix docs run build",
+    "docs:preview": "npm --prefix docs run preview"
   },
   "peerDependencies": {
     "sharp": ">=0.33.0"
@@ -62,12 +69,26 @@
     "@biomejs/biome": "^1.9.0",
     "@types/node": "^25.2.3",
     "@vitest/coverage-v8": "^3.0.0",
+    "colorthief": "^3.3.1",
+    "extract-colors": "^4.2.1",
+    "fast-average-color": "^9.5.0",
+    "get-image-colors": "^4.0.1",
     "happy-dom": "^17.0.0",
+    "node-vibrant": "^4.0.4",
+    "quantize": "^1.0.2",
     "sharp": "^0.33.0",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
-  "keywords": ["color", "palette", "dominant-color", "image", "extract", "sharp", "canvas"],
+  "keywords": [
+    "color",
+    "palette",
+    "dominant-color",
+    "image",
+    "extract",
+    "sharp",
+    "canvas"
+  ],
   "license": "MIT"
 }

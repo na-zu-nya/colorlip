@@ -6,6 +6,7 @@ Fast, general-purpose dominant color extraction library for Node.js and Browser.
 
 - Adaptive color extraction using CIELAB Delta E perceptual distance
 - Rich output: hex, HSL, Lab, LCH, OKLab, OKLCH, CSS color strings, and hue category per color
+- Optional palette analysis with `dominant`, `accent`, and `swatches`
 - Platform-agnostic core (`colorlip`) works anywhere
 - Built-in adapters for **Node.js (sharp)** and **Browser (Canvas API)**
 - TypeScript-first with full type definitions
@@ -28,9 +29,9 @@ npm install colorlip sharp
 ### Node.js (sharp)
 
 ```ts
-import { colorlipFromFile } from "colorlip/sharp";
+import { getColors } from "colorlip/sharp";
 
-const colors = await colorlipFromFile("photo.jpg");
+const colors = await getColors("photo.jpg");
 
 console.log(colors[0]);
 // {
@@ -44,43 +45,72 @@ console.log(colors[0]);
 // }
 ```
 
+```ts
+import { getPalette } from "colorlip/sharp";
+
+const palette = await getPalette("photo.jpg");
+
+console.log(palette.dominant?.hex);
+console.log(palette.accent?.hex);
+console.log(palette.swatches);
+```
+
 ### Browser (Canvas API)
 
 ```ts
-import { colorlipFromImage } from "colorlip/canvas";
+import { getColors } from "colorlip/canvas";
 
-const colors = await colorlipFromImage(imgElement);
+const colors = await getColors(imgElement);
 ```
 
 ### Raw pixels (any environment)
 
 ```ts
-import { colorlip } from "colorlip";
+import { getColors } from "colorlip";
 
-const colors = colorlip(pixelData, width, height, channels);
+const colors = getColors(pixelData, width, height, channels);
 ```
 
 ## API
 
-### `colorlipFromFile(filePath, options?)` — Node.js / sharp
+### `getColors(source, options?)` — Node.js / sharp
 
-Reads an image file and returns dominant colors.
+Accepts a file path (`string`) or in-memory image data (`Buffer` / `Uint8Array`) and returns dominant colors.
 
-### `colorlipFromBuffer(buffer, options?)` — Node.js / sharp
+### `getPalette(source, options?)` — Node.js / sharp
 
-Extracts from an in-memory image buffer.
+Returns `{ dominant, accent, swatches }`.
 
-### `colorlipFromImage(source, options?)` — Browser / Canvas
+### `getColors(source, options?)` — Browser / Canvas
 
 Accepts `HTMLImageElement`, `ImageBitmap`, `Blob`, or image URL string.
 
-### `colorlipFromImageData(imageData, options?)` — Browser / Canvas
+### `getPalette(source, options?)` — Browser / Canvas
+
+Returns `{ dominant, accent, swatches }`.
+
+### `getColorsFromImageData(imageData, options?)` — Browser / Canvas
 
 Extracts from a Canvas `ImageData` object directly.
 
-### `colorlip(data, width, height, channels, options?)` — Core
+### `getColors(data, width, height, channels, options?)` — Core
 
 Low-level function that works with raw pixel data (`Uint8Array` / `Uint8ClampedArray`). Platform-agnostic.
+
+### `getPalette(data, width, height, channels, options?)` — Core
+
+Low-level detailed API that returns a palette object.
+
+### Legacy aliases
+
+Existing names remain available for compatibility:
+
+- `colorlip(...)`
+- `colorlipFromFile(...)`
+- `colorlipFromBuffer(...)`
+- `colorlipFromImage(...)`
+- `colorlipFromImageData(...)`
+- `DominantColor` (type alias)
 
 ### Options
 
@@ -96,10 +126,10 @@ interface ExtractOptions {
 
 ### Output
 
-Each color in the result array is a `DominantColor`:
+Each color in the result array is a `ColorlipColor`:
 
 ```ts
-interface DominantColor {
+interface ColorlipColor {
   r: number;           // 0-255
   g: number;           // 0-255
   b: number;           // 0-255
@@ -126,6 +156,14 @@ interface DominantColor {
 }
 ```
 
+```ts
+interface ColorlipPalette {
+  dominant: ColorlipColor | null
+  accent: ColorlipColor | null
+  swatches: ColorlipColor[]
+}
+```
+
 ### Utility functions
 
 ```ts
@@ -137,7 +175,7 @@ import { rgbToHex, rgbToHsl, getHueCategory, createDominantColor, aggregateColor
 | `rgbToHex(r, g, b)` | RGB → hex string (e.g. `"#FF00AA"`) |
 | `rgbToHsl(r, g, b)` | RGB → `{ h, s, l }` |
 | `getHueCategory(hue)` | Hue (0–360) → `"red"` \| `"orange"` \| … \| `"gray"` |
-| `createDominantColor(r, g, b, percentage)` | Build a full `DominantColor` object from RGB + weight |
+| `createDominantColor(r, g, b, percentage)` | Build a full `ColorlipColor` object from RGB + weight |
 | `aggregateColors(colorSets, numColors?)` | Merge multiple extraction results into top-N colors |
 
 ## How It Works

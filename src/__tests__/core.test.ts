@@ -6,6 +6,7 @@ import {
   createDominantColor,
   extractFallbackPalette,
   getHueCategory,
+  getPalette,
   rgbToHex,
   rgbToHsl,
 } from "../core";
@@ -45,6 +46,52 @@ function makeStripedPixels(
   for (let y = 0; y < h; y++) {
     const [r, g, b] = y < h / 2 ? c1 : c2;
     for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * channels;
+      data[i] = r;
+      data[i + 1] = g;
+      data[i + 2] = b;
+      if (channels === 4) data[i + 3] = 255;
+    }
+  }
+  return data;
+}
+
+/** 外周と中央で色が分かれた画像 */
+function makeFramedPixels(
+  border: [number, number, number],
+  center: [number, number, number],
+  w: number,
+  h: number,
+  frame = 2,
+  channels = 3,
+): Uint8Array {
+  const data = new Uint8Array(w * h * channels);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const [r, g, b] =
+        x < frame || x >= w - frame || y < frame || y >= h - frame ? border : center;
+      const i = (y * w + x) * channels;
+      data[i] = r;
+      data[i + 1] = g;
+      data[i + 2] = b;
+      if (channels === 4) data[i + 3] = 255;
+    }
+  }
+  return data;
+}
+
+/** 市松模様で2色を均等配置した画像 */
+function makeCheckerPixels(
+  c1: [number, number, number],
+  c2: [number, number, number],
+  w: number,
+  h: number,
+  channels = 3,
+): Uint8Array {
+  const data = new Uint8Array(w * h * channels);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const [r, g, b] = (x + y) % 2 === 0 ? c1 : c2;
       const i = (y * w + x) * channels;
       data[i] = r;
       data[i + 1] = g;
@@ -295,17 +342,23 @@ describe("analyzeImageStats", () => {
     const data = makeSolidPixels(255, 0, 0, 20, 20);
     const stats = analyzeImageStats(data, 20, 20, 3);
     expect(stats.medianSaturation).toBeGreaterThan(0.5);
+    expect(stats.saturationP25).toBeGreaterThan(0.5);
+    expect(stats.saturationP75).toBeGreaterThan(0.5);
   });
 
   it("グレー画像では medianSaturation が低い", () => {
     const data = makeSolidPixels(128, 128, 128, 20, 20);
     const stats = analyzeImageStats(data, 20, 20, 3);
     expect(stats.medianSaturation).toBe(0);
+    expect(stats.saturationP25).toBe(0);
+    expect(stats.saturationP75).toBe(0);
   });
 
   it("空画像でもクラッシュしない", () => {
     const stats = analyzeImageStats(new Uint8Array(0), 0, 0, 3);
     expect(stats.medianSaturation).toBe(0);
+    expect(stats.saturationP25).toBe(0);
+    expect(stats.saturationP75).toBe(0);
     expect(stats.edgeCentrality).toBe(0.5);
   });
 });
@@ -362,6 +415,136 @@ describe("colorlip", () => {
     const data = makeStripedPixels([200, 50, 50], [50, 200, 50], 20, 20);
     const result = colorlip(data, 20, 20, 3, { numColors: 1 });
     expect(result.length).toBe(1);
+  });
+
+  it("外周に偏った色より中央の色を優先する", () => {
+    const data = makeFramedPixels([168, 96, 60], [36, 120, 48], 20, 20, 3);
+    const result = colorlip(data, 20, 20, 3, { numColors: 1 });
+    expect(result[0]?.hueCategory).toBe("green");
+  });
+
+  it("高輝度かつ高彩度の色を暗い高彩度色より優先する", () => {
+    const data = makeCheckerPixels([36, 48, 0], [120, 204, 48], 20, 20);
+    const result = colorlip(data, 20, 20, 3, { numColors: 1 });
+    expect(result[0]?.hex).toBe("#78CC30");
+  });
+
+  it("明るい低彩度色より中明度の鮮やかな色を優先する", () => {
+    const data = makeCheckerPixels([228, 220, 208], [126, 206, 47], 20, 20);
+    const result = colorlip(data, 20, 20, 3, { numColors: 1 });
+    expect(result[0]?.hex).toBe("#7ECE2F");
+  });
+
+  it("近い明色が複数ビンに分かれても票割れしにくい", () => {
+    const data = new Uint8Array(20 * 20 * 3);
+    for (let y = 0; y < 20; y++) {
+      for (let x = 0; x < 20; x++) {
+        const i = (y * 20 + x) * 3;
+        const [r, g, b] =
+          y < 8 ? [36, 48, 0] : y < 14 ? [126, 206, 47] : [132, 216, 48];
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+      }
+    }
+
+    const result = colorlip(data, 20, 20, 3, { numColors: 1 });
+    expect(result[0]?.hueCategory).toBe("green");
+    expect((result[0]?.lightness ?? 0) > 30).toBe(true);
+  });
+
+  it("全体が低彩度寄りなら muted dominant を拾いやすくする", () => {
+    const data = new Uint8Array(20 * 20 * 3);
+    for (let y = 0; y < 20; y++) {
+      for (let x = 0; x < 20; x++) {
+        const i = (y * 20 + x) * 3;
+        const [r, g, b] =
+          y < 14 ? [169, 187, 177] : y < 18 ? [163, 145, 133] : [208, 48, 48];
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+      }
+    }
+
+    const result = colorlip(data, 20, 20, 3, { numColors: 3 });
+    expect(result[0]?.hex).toBe("#A9BBB1");
+  });
+
+  it("低彩度の多色パレットでも 2 色まで潰れない", () => {
+    const palette: Array<[number, number, number]> = [
+      [205, 193, 196],
+      [177, 169, 177],
+      [232, 216, 215],
+      [185, 161, 159],
+      [163, 142, 156],
+      [150, 124, 125],
+    ];
+    const heightPerBand = 4;
+    const width = 24;
+    const height = palette.length * heightPerBand;
+    const data = new Uint8Array(width * height * 3);
+
+    for (let band = 0; band < palette.length; band++) {
+      const [r, g, b] = palette[band] ?? [0, 0, 0];
+      for (let y = band * heightPerBand; y < (band + 1) * heightPerBand; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 3;
+          data[i] = r;
+          data[i + 1] = g;
+          data[i + 2] = b;
+        }
+      }
+    }
+
+    const result = colorlip(data, width, height, 3, { numColors: 6 });
+    expect(result.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getPalette
+// ---------------------------------------------------------------------------
+describe("getPalette", () => {
+  it("dominant / accent / swatches を返す", () => {
+    const data = new Uint8Array(20 * 20 * 3);
+    for (let y = 0; y < 20; y++) {
+      for (let x = 0; x < 20; x++) {
+        const i = (y * 20 + x) * 3;
+        const [r, g, b] =
+          y < 9 ? [126, 206, 47] : y < 15 ? [220, 72, 72] : [168, 132, 108];
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+      }
+    }
+
+    const palette = getPalette(data, 20, 20, 3, { numColors: 3 });
+    expect(palette.dominant).toBeTruthy();
+    expect(palette.accent).toBeTruthy();
+    expect(palette.swatches.length).toBeGreaterThanOrEqual(2);
+    expect(palette.accent?.hex).not.toBe(palette.dominant?.hex);
+    expect(
+      deltaE76(palette.dominant?.lab ?? rgbToLab(0, 0, 0), palette.accent?.lab ?? rgbToLab(0, 0, 0)),
+    ).toBeGreaterThan(25);
+  });
+
+  it("小さくても鮮やかな差し色を accent として拾える", () => {
+    const data = new Uint8Array(20 * 20 * 3);
+    for (let y = 0; y < 20; y++) {
+      for (let x = 0; x < 20; x++) {
+        const i = (y * 20 + x) * 3;
+        const [r, g, b] = y < 12 ? [222, 192, 127] : y < 19 ? [113, 85, 81] : [191, 142, 251];
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+      }
+    }
+
+    const palette = getPalette(data, 20, 20, 3, { numColors: 6 });
+    expect(palette.dominant?.hex).toBe("#DEC07F");
+    expect(palette.accent).toBeTruthy();
+    expect(["red", "violet"]).toContain(palette.accent?.hueCategory);
+    expect((palette.accent?.saturation ?? 0) > 40).toBe(true);
   });
 });
 

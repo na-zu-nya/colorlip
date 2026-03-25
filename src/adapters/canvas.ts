@@ -1,5 +1,5 @@
-import { colorlip } from "../core";
-import type { DominantColor, ExtractOptions } from "../types";
+import { colorlip, getColors as getCoreColors, getPalette as getCorePalette } from "../core";
+import type { ColorlipColor, ColorlipPalette, ExtractOptions } from "../types";
 
 /** Canvas API 経由で受け付ける画像ソース */
 export type ImageSource = HTMLImageElement | ImageBitmap | Blob | string;
@@ -11,12 +11,25 @@ const MAX_CANVAS_SIZE = 150;
  *
  * @param source HTMLImageElement, ImageBitmap, Blob, または画像 URL
  */
-export { colorlip } from "../core";
+export { colorlip, getCoreColors as getColorsFromPixels, getCorePalette as getPaletteFromPixels };
 
-export async function colorlipFromImage(
+export async function getColors(
   source: ImageSource,
   options?: ExtractOptions,
-): Promise<DominantColor[]> {
+): Promise<ColorlipColor[]> {
+  const imageData = await toImageData(source);
+  return colorlipFromImageData(imageData, options);
+}
+
+export async function getPalette(
+  source: ImageSource,
+  options?: ExtractOptions,
+): Promise<ColorlipPalette> {
+  const imageData = await toImageData(source);
+  return getPaletteFromImageData(imageData, options);
+}
+
+async function toImageData(source: ImageSource): Promise<ImageData> {
   const bitmap = await toBitmap(source);
   try {
     const scale = Math.min(MAX_CANVAS_SIZE / bitmap.width, MAX_CANVAS_SIZE / bitmap.height, 1);
@@ -28,9 +41,7 @@ export async function colorlipFromImage(
     if (!ctx) throw new Error("Failed to get 2d context from OffscreenCanvas");
 
     ctx.drawImage(bitmap, 0, 0, w, h);
-    const imageData = ctx.getImageData(0, 0, w, h);
-
-    return colorlipFromImageData(imageData, options);
+    return ctx.getImageData(0, 0, w, h);
   } finally {
     if ("close" in bitmap && typeof bitmap.close === "function") {
       bitmap.close();
@@ -39,13 +50,40 @@ export async function colorlipFromImage(
 }
 
 /**
+ * 互換エイリアス: 画像ソースから代表色を抽出する。
+ */
+export async function colorlipFromImage(
+  source: ImageSource,
+  options?: ExtractOptions,
+): Promise<ColorlipColor[]> {
+  return getColors(source, options);
+}
+
+/**
  * ImageData から代表色を抽出する（Canvas API 使用）。
+ */
+export function getColorsFromImageData(
+  imageData: ImageData,
+  options?: ExtractOptions,
+): ColorlipColor[] {
+  return colorlip(imageData.data, imageData.width, imageData.height, 4, options);
+}
+
+export function getPaletteFromImageData(
+  imageData: ImageData,
+  options?: ExtractOptions,
+): ColorlipPalette {
+  return getCorePalette(imageData.data, imageData.width, imageData.height, 4, options);
+}
+
+/**
+ * 互換エイリアス: ImageData から代表色を抽出する。
  */
 export function colorlipFromImageData(
   imageData: ImageData,
   options?: ExtractOptions,
-): DominantColor[] {
-  return colorlip(imageData.data, imageData.width, imageData.height, 4, options);
+): ColorlipColor[] {
+  return getColorsFromImageData(imageData, options);
 }
 
 async function toBitmap(source: ImageSource): Promise<ImageBitmap> {
