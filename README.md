@@ -2,16 +2,17 @@
 
 Fast dominant color extraction for Node.js and the browser.
 
-`colorlip` is a TypeScript-first library for extracting dominant colors and compact palettes from images. The core works on raw pixel buffers with zero runtime dependencies, and optional adapters handle image loading in Node.js (`sharp`) and browsers (Canvas API).
+`colorlip` is a lightweight, fast, TypeScript-first library for extracting dominant colors and compact palettes from images. It is tuned to pick colors that feel more perceptually right, especially for illustrations, artwork, and product images where visual impression matters. It is designed with visually driven use cases in mind, including illustration communities, social platforms, and commerce experiences.
 
 [日本語版 README](./README.ja.md)
 
 ## Features
 
+- Perceptually tuned color extraction that works well for illustrations and artwork
 - Adaptive palette extraction based on image statistics
-- Perceptual color merging with CIELAB Delta E
+- Natural merging of nearby colors using CIELAB Delta E
+- Practical palette API with `dominant`, `accent`, and `swatches`
 - Rich color output: `hex`, `HSL`, `Lab`, `LCH`, `OKLab`, `OKLCH`, CSS color strings, and hue category
-- Palette API with `dominant`, `accent`, and `swatches`
 - Platform-agnostic core for raw pixel data
 - Built-in adapters for `sharp` and Canvas
 - Zero runtime dependencies in the core package
